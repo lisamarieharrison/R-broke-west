@@ -43,7 +43,7 @@ se_run <- list()
 
 for (s in 1:6) {
   
-  dat.cut <- dat[dat$stn %in% runs[s][[s]], ]
+  dat.cut <- dat[dat$stn %in% runs[s][[1]], ]
   
   #get latitude and longitude for each station
   n.station <- length(unique(dat.cut$stn))
@@ -118,7 +118,7 @@ for (s in 1:6) {
   
   #predict at each point using parameter values for other stations to test extrapolation
   #using depth, par, temperature, ice and watermass, predict l.fluoro using the model
-  extra.stn <- setdiff(2:120, runs[s][[s]])
+  extra.stn <- setdiff(2:120, runs[s][[1]])
   extra.dat <- dat[dat$stn %in% extra.stn, ]
   
   
@@ -150,5 +150,8 @@ for (s in 1:6) {
 }
 
 
+#plot fitted against observed by station
+lat.plot <- xyplot(extra.dat$l.fluoro + pval ~ extra.dat$depth | extra.dat$stn, outer = FALSE, type = "l")
+update(lat.plot, par.settings = simpleTheme(lwd = c(2, 1), col = c("dodgerblue", "red")))
 
 
