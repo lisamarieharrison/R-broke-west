@@ -142,7 +142,7 @@ for (s in 1:6) {
   }  
   
   #write out predicted values and standard errors
-  pval_run <- list(pval_run, pval)
+  write.csv(pval, "")
   se_run <- list(se_run, se)
   
   print(paste("Finished run", s))
@@ -151,7 +151,10 @@ for (s in 1:6) {
 
 
 #plot fitted against observed by station
+pval[is.na(extra.dat$l.fluoro)] <- NA
 lat.plot <- xyplot(extra.dat$l.fluoro + pval ~ extra.dat$depth | extra.dat$stn, outer = FALSE, type = "l")
 update(lat.plot, par.settings = simpleTheme(lwd = c(2, 1), col = c("dodgerblue", "red")))
+
+
 
 
