@@ -68,7 +68,7 @@ for (i in 1:length(broke_transects)) {
   #subset predator data to include only the correct date and Adelie Penguins
   pred <- pred[pred$date %in% unique(swarm[["low"]][["120khz"]]$Date_S), ]
   pred <- pred[pred$species == "Pygoscelis adeliae (Hombron and Jacquinot,1841) (Adelie Penguin)", ]
-  pred$t <- chron(times. = pred$t, format = "h:m:s")
+  pred$t <- chron(chron(dates. = as.character(pred$date), times. = pred$t, format = list(dates. = "ymd", times. = "h:m:s"), out.format = list(dates. = "d/m/y", times. = "h:m:s")))
   
   if (nrow(pred) != 0) {
     for (j in 1:nrow(pred)) {
