@@ -43,13 +43,14 @@ for (i in 1:length(broke_transects)) {
     swarm[[j]]$"38khz" <- swarm[[j]]$"38khz"[swarm[[j]]$"38khz"$Depth_mean <= 100, ]
     
     #convert krill times to a chron object
-    swarm[[j]]$"120khz"$Time_S <- chron(times. = swarm[[j]]$"120khz"$Time_S, format = "h:m:s")
-    swarm[[j]]$"120khz"$Time_E <- chron(times. = swarm[[j]]$"120khz"$Time_E, format = "h:m:s")
+    swarm[[j]]$"120khz"$dt_start <- chron(chron(dates. = as.character(swarm[[j]]$"120khz"$Date_S), times. = swarm[[j]]$"120khz"$Time_S, format = list(dates. = "ymd", times. = "h:m:s"), out.format = list(dates. = "d/m/y", times. = "h:m:s")))
+    swarm[[j]]$"120khz"$dt_end <- chron(chron(dates. = as.character(swarm[[j]]$"120khz"$Date_E), times. = swarm[[j]]$"120khz"$Time_E, format = list(dates. = "ymd", times. = "h:m:s"), out.format = list(dates. = "d/m/y", times. = "h:m:s")))
     
   }
     
   #plot krill swarm location at each density by depth and time  
-  plot(c(swarm[["low"]][["120khz"]]$Time_S[1], swarm[["low"]][["120khz"]]$Time_E[1]), c(swarm[["low"]][["120khz"]]$Depth_mean[1], swarm[["low"]][["120khz"]]$Depth_mean[1]), type = "l", xlim = c(min(swarm[["low"]][["120khz"]]$Time_S), max(swarm[["low"]][["120khz"]]$Time_E)), lwd = 2, xaxt = "n", ylim = c(100, 0), yaxt = "n", xlab = "time", ylab = "swarm", col = "white")
+  plot(c(swarm$"low"$"120khz"$dt_start[1], swarm$"low"$"120khz"$dt_end[1]), c(swarm$"low"$"120khz"$Depth_mean[1], swarm$"low"$"120khz"$Depth_mean[1]), type = "l", xlim = c(min(swarm$"low"$"120khz"$dt_start), max(swarm$"low"$"120khz"$dt_end)), lwd = 2, ylim = c(100, 0), xlab = "time", ylab = "swarm", col = "white")
+  title(broke_transects[i])  
   
   for (j in names(swarm)) {
     
@@ -59,17 +60,11 @@ for (i in 1:length(broke_transects)) {
     
     for (k in 1:nrow(swarm[[j]][["120khz"]])) {
       
-      points(c(swarm[[j]][["120khz"]]$Time_S[k], swarm[[j]][["120khz"]]$Time_E[k]), c(swarm[[j]][["120khz"]]$Depth_mean[k], swarm[[j]][["120khz"]]$Depth_mean[k]), type = "l", lwd = 7, col = line_col)
+      points(c(swarm[[j]][["120khz"]]$dt_start[k], swarm[[j]][["120khz"]]$dt_end[k]), c(swarm[[j]][["120khz"]]$Depth_mean[k], swarm[[j]][["120khz"]]$Depth_mean[k]), type = "l", lwd = 7, col = line_col)
     }
         
   }
-  
-  
-  title(broke_transects[i])  
-  axis(1, at = seq(from = min(swarm[["low"]][["120khz"]]$Time_S), to = max(swarm[["low"]][["120khz"]]$Time_E), length.out = 10), 
-       labels = chron(times. = seq(from = chron(times. = min(krill["low"][[1]]$Time_S), format = "h:m:S"), to = chron(times. = max(krill["low"][[1]]$Time_E), format = "h:m:s"), length.out = 10)))
-  axis(2, at = seq(100, 0, by = -10), labels = seq(100, 0, by = -10))
-  
+
   #subset predator data to include only the correct date and Adelie Penguins
   pred <- pred[pred$date %in% unique(swarm[["low"]][["120khz"]]$Date_S), ]
   pred <- pred[pred$species == "Pygoscelis adeliae (Hombron and Jacquinot,1841) (Adelie Penguin)", ]
