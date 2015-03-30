@@ -4,7 +4,7 @@
 
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/ctd")
 
-for (i in 2:118) {
+for (i in 1:118) {
   
   k120 <- read.csv(paste("120kHz/stn_", i, "_extracted_120khz.csv", sep = ""), header = F, skip = 1)
   k38 <- read.csv(paste("38kHz/stn_", i, "_extracted_38khz.csv", sep = ""), header = F, skip = 1)
