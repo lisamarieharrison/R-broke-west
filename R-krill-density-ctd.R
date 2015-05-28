@@ -3,6 +3,7 @@
 #date: 26/03/2015
 
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/ctd")
+library(fields)
 
 for (i in 1:118) {
   
