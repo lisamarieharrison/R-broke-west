@@ -14,18 +14,20 @@ calcKrillBiomass <- function(krill_biomass, survey_area_width, survey_area_lengt
 }
 
 detected_width <- 0
+percentage_overestimated <- 0
 calculated_biomass <- 0
 for (i in 1:1000) {
   
-  calc_biomass <- calcKrillBiomass(krill_biomass = 5e5, survey_area_width = 5e12, survey_area_length = 2e4, survey_area_depth = 250, detected_width = i)
+  calc_biomass <- calcKrillBiomass(krill_biomass = 5e5, survey_area_width = 1e3, survey_area_length = 5e5, survey_area_depth = 250, detected_width = i)
   
   detected_width[i] <- calc_biomass$detected_width
+  percentage_overestimated[i] <- calc_biomass$calculated_biomass/5e5
   calculated_biomass[i] <- calc_biomass$calculated_biomass
   
 }
 
-plot(detected_width, calculated_biomass, type = "l")
-abline(h = 500000, col = "red")
+plot(detected_width, percentage_overestimated, type = "l")
+abline(h = 1, col = "red")
 abline(v = 250, col = "blue")
 
 
