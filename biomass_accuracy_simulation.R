@@ -1,6 +1,14 @@
 #assume krill is homogenously distributed
+#assume all krill in the survey slice are perfectly detected
 
-calcKrillBiomass <- function(krill_biomass, survey_area_width, survey_area_length, survey_area_depth, detected_width) {
+calcKrillBiomass <- function(krill_biomass, survey_area_width, survey_area_length, 
+                             survey_area_depth, detected_width) {
+  
+  #krill_biomass = total krill biomass in survey area in kg
+  #survey_area_width = survey width in m
+  #survey_area_length = survey length in m
+  #survey_area_depth = survey depth in m
+  #detected_width = width of the survey beam
   
   #apparent kg/m2
   visible_kg <- krill_biomass/(survey_area_width/detected_width)
@@ -18,7 +26,9 @@ percentage_overestimated <- 0
 calculated_biomass <- 0
 for (i in 1:1000) {
   
-  calc_biomass <- calcKrillBiomass(krill_biomass = 5e5, survey_area_width = 1e3, survey_area_length = 5e5, survey_area_depth = 250, detected_width = i)
+  calc_biomass <- calcKrillBiomass(krill_biomass = 5e5, survey_area_width = 1e3, 
+                                   survey_area_length = 5e5, survey_area_depth = 250, 
+                                   detected_width = i)
   
   detected_width[i] <- calc_biomass$detected_width
   percentage_overestimated[i] <- calc_biomass$calculated_biomass/5e5
