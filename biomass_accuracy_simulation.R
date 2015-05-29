@@ -41,7 +41,7 @@ abline(h = 1, col = "red")
 abline(v = 250, col = "blue")
 
 
-
-
-
+#calculation of maximum beam width in m (detected_width) based on angle in degrees
+deg <- 30
+250 * tan((deg/2)*pi/180 )*2
 
