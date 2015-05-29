@@ -12,7 +12,8 @@ calcKrillBiomass <- function(krill_biomass, survey_area_width, survey_area_lengt
   
   #apparent kg/m2
   visible_kg <- krill_biomass/(survey_area_width/detected_width)
-  apparent_kg_m2 <- visible_kg/(survey_area_length*survey_area_depth)
+  apparent_kg_m3 <- visible_kg/(survey_area_length*survey_area_depth*detected_width)
+  apparent_kg_m2 <- apparent_kg_m3*survey_area_depth
   
   #calculated krill biomass in kg
   calculated_biomass <- apparent_kg_m2*survey_area_width*survey_area_length
@@ -36,7 +37,7 @@ for (i in 1:1000) {
   
 }
 
-plot(detected_width, percentage_overestimated, type = "l")
+plot(detected_width, percentage_overestimated, type = "l", ylab = "Proportion of real biomass")
 abline(h = 1, col = "red")
 abline(v = 250, col = "blue")
 
