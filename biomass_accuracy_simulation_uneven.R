@@ -19,11 +19,11 @@ calcKrillBiomass <- function(survey_area_width, survey_area_length,
   edsu[cells] <- rexp(n_cells, 1/20)
   
   #choose random locations for 100 krill swarms
-  krill_col <- round(runif(100, 1, ncol(edsu)))
-  krill_row <- round(runif(100, 1, nrow(edsu)))
+  krill_col <- round(runif(1000, 1, ncol(edsu)))
+  krill_row <- round(runif(1000, 1, nrow(edsu)))
   
   #place krill into survey area
-  for (i in 1:20) {
+  for (i in 1:200) {
     cols <- c(krill_col[i] - 2, krill_col[i] - 1, krill_col[i], krill_col[i] + 1, krill_col[i] - 2)
     rows <- c(krill_row[i] - 2, krill_row[i] - 1, krill_row[i], krill_row[i] + 1, krill_row[i] + 2)
     if (any(cols < 1)) cols[cols < 1] <- 1
@@ -33,7 +33,7 @@ calcKrillBiomass <- function(survey_area_width, survey_area_length,
     edsu[rows, cols] <- rnorm(25, 50)
   }
   
-  for (i in 21:100) {
+  for (i in 210:1000) {
     cols <- c(krill_col[i] - 1, krill_col[i], krill_col[i] + 1)
     rows <- c(krill_row[i] - 1, krill_row[i], krill_row[i] + 1)
     if (any(cols < 1)) cols[cols < 1] <- 1
@@ -54,11 +54,11 @@ calcKrillBiomass <- function(survey_area_width, survey_area_length,
 
 krill_biomass <- 0
 calculated_biomass <- 0
-for (i in 1:1000) {
+for (i in 1:200) {
   
-  calc_biomass <- calcKrillBiomass(survey_area_width = 5e4, 
-                                   survey_area_length = 1e5, survey_area_depth = 250, 
-                                   detected_width = 50, edsu_width = 100)
+  calc_biomass <- calcKrillBiomass(survey_area_width = 2e+05, 
+                                   survey_area_length = 6e+05, survey_area_depth = 250, 
+                                   detected_width = 50, edsu_width = 2000)
   
   calculated_biomass[i] <- calc_biomass$calculated_biomass
   krill_biomass[i] <- calc_biomass$krill_biomass
