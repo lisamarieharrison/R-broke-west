@@ -13,7 +13,7 @@ krill_col <- round(runif(100, 1, ncol(edsu)))
 krill_row <- round(runif(100, 1, nrow(edsu)))
 
 #place krill into survey area
-for (i in 1:20) {
+for (i in 1:30) {
   cols <- c(krill_col[i] - 2, krill_col[i] - 1, krill_col[i], krill_col[i] + 1, krill_col[i] - 2)
   rows <- c(krill_row[i] - 2, krill_row[i] - 1, krill_row[i], krill_row[i] + 1, krill_row[i] + 2)
   if (any(cols < 1)) cols[cols < 1] <- 1
@@ -23,7 +23,7 @@ for (i in 1:20) {
   edsu[rows, cols] <- rnorm(25, 50)
 }
 
-for (i in 21:100) {
+for (i in 31:100) {
   cols <- c(krill_col[i] - 1, krill_col[i], krill_col[i] + 1)
   rows <- c(krill_row[i] - 1, krill_row[i], krill_row[i] + 1)
   if (any(cols < 1)) cols[cols < 1] <- 1
