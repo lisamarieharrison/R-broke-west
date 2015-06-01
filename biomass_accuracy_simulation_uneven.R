@@ -18,7 +18,7 @@ calcKrillBiomass <- function(survey_area_width, survey_area_length,
   cells <- matrix(c(runif(n_cells, 1, nrow(edsu)), runif(n_cells, 1, ncol(edsu))), ncol = 2)
   edsu[cells] <- rexp(n_cells, 1/20)
   
-  #choose random locations for 100 krill swarms
+  #choose random locations for 1000 krill swarms (20% large and 80% medium)
   krill_col <- round(runif(1000, 1, ncol(edsu)))
   krill_row <- round(runif(1000, 1, nrow(edsu)))
   
