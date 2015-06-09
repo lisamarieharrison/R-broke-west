@@ -6,8 +6,8 @@
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/")
 dat   <- read.csv(file = "BROKE-West raw data/Air breathing predator/broke_seabirds.csv", header = T, fill = T)
 track <- read.csv(file  = "BROKE-West raw data/Echoview/integrated data/broke_cruise_track.csv", header = T)
-acoustic_38  <- read.csv(file = "BROKE-West raw data/Echoview/integrated data/broke_38khz_integration_hrp.csv", header = T)
-acoustic_120 <- read.csv(file = "BROKE-West raw data/Echoview/integrated data/broke_120khz_integration_hrp.csv", header = T)
+acoustic_38  <- read.csv(file = "BROKE-West/Echoview/integrated data/broke_38khz_integration_hrp.csv", header = T)
+acoustic_120 <- read.csv(file = "BROKE-West/Echoview/integrated data/broke_120khz_integration_hrp.csv", header = T)
 library(chron)
 
 #convert latitude/longitude from dms to decimal
@@ -42,35 +42,54 @@ plot(gps$Longitude, gps$Latitude, xlab = "Longitude", ylab = "Latitude")
 points(dat_sub$longitude, -dat_sub$latitude, col = "red", pch = 19)
 title("Cruise track (black) with sighting locations superimposed (red)")
 
-
 #calculate 120kHz - 38kHz for each 10x50 window
-sv_diff <- acoustic_120$Sv_mean - acoustic_38$Sv_mean
-sv_diff[sv_diff < -500 | sv_diff > 500] <- NA #remove no data areas
+sv_38 <- acoustic_38$Sv_mean
+sv_120 <- acoustic_120$Sv_mean
+sv_38[sv_38 > 500 | sv_38 < -500] <- NA
+sv_120[sv_120 > 500 | sv_120 < -100] <- NA
+noise <- is.na(sv_120)
+sv_diff <- sv_120 - sv_38
 
-int_depth <- acoustic_38$Depth_mean
-int_time  <- acoustic_38$Time_M
-int_date  <- acoustic_38$Date_M
-int_td <- paste(int_date, int_time) #date time for each integration interval
 
-hist(sv_diff)
-abline(v = c(2, 12), col = "red")
-#write.csv(sv_diff, "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West raw data/Echoview/integrated data/sv_diff.csv", row.names = F)
+#remove 120 - 38 kHz values outside of [1.02, 14.75] because these are unlikely to be krill
+#dB difference window is from Potts AAD report for KAOS data
+sv_diff[sv_diff < 2.5 | sv_diff > 14.7] <- NA
+sv_120[is.na(sv_diff)] <- NA
 
-#remove 120 - 38 kHz values outside of [2, 12] because these are unlikely to be krill
-sv_diff[sv_diff < 2 | sv_diff > 12] <- NA
-nasc_120 <- acoustic_120$PRC_NASC
-nasc_120[sv_diff == NA] <- 0
-nasc_120[int_depth < 15] <- NA #remove the first interval because of noise
-nasc_120[acoustic_120$Sv_noise == -999] <- NA #remove possible error values
+sv <- 10^(sv_120/10)
 
-#convert to density using target strength
-#use 0.028*sv_120 (Demer & Hewitt 1995) as an approximation of krill lengths
-p <- nasc_120*0.028 #average volumetric density/interval
-b <- (p*10*50)/1000 #biomass in kg/interval
+mvbs <- 0
+for (i in 1:length(unique(acoustic_38$Interval))) {
+  interval <- unique(acoustic_38$Interval)[i]
+  mvbs[i] <- 10*log10(sum(na.omit(sv[acoustic_38$Interval == interval]))/max(acoustic_38$Layer))
+}
+mvbs[mvbs == -Inf] <- NA
 
-#sum density through depths for each time point to find biomass in water column at each time
-pt <- colSums(matrix(b, nrow = 25), na.rm = T)
-plot(pt)
+#convert to density using target strength (kg/m2 per interval)
+p <- 250*10 ^((mvbs - -42.22)/10)*1000
+
+#add zero krill intervals back in
+p[is.na(p)] <- 0
+
+#remove noise intervals
+p[table(acoustic_120$Interval, noise)[, 2] == length(unique(acoustic_38$Layer))] <- NA
+
+#remove noise values
+p[p > 5000] <- NA
+
+#calculate interval length (m)
+interval_length <- 0
+acoustic_distance <- acoustic_38[acoustic_38$Layer == 2, ]
+for (k in 1:length(unique(acoustic_distance$Interval))) {
+  int = unique(acoustic_distance$Interval)[k]
+  interval_length[k] <- (acoustic_distance$Dist_E[acoustic_distance$Interval == int] - acoustic_distance$Dist_S[acoustic_distance$Interval == int])
+}
+
+#calculate interval weighting
+interval_weight <- interval_length/sum(na.omit(interval_length))
+
+#calculate mean weighted density
+transect_mean <- sum(na.omit(p*interval_weight))
 
 
 #------------------------------------------------------------------------------#
