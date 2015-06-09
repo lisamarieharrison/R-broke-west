@@ -11,29 +11,18 @@ calcKrillBiomass <- function(survey_area_width, survey_area_length,
   
   n_edsu <- (survey_area_width/detected_width) * (survey_area_length/edsu_width)
   
-  edsu <- matrix(0, ncol = (survey_area_width/detected_width), nrow = (survey_area_length/edsu_width))
+  krill <- matrix(rexp(n_edsu, 1/20), ncol = (survey_area_width/detected_width), nrow = survey_area_length/10)
   
-  #add random krill to cells
-  n_cells <- round(ncol(edsu)*nrow(edsu), 0)
-  cells <- matrix(c(runif(n_cells, 1, nrow(edsu)), runif(n_cells, 1, ncol(edsu))), ncol = 2)
-  edsu[cells] <- rexp(n_cells, 1/20)
+  n_average <- edsu_width/10
   
-  #choose random locations for 1000 krill swarms (20% large and 80% medium)
-  krill_col <- round(runif(1000, 1, ncol(edsu)))
-  krill_row <- round(runif(1000, 1, nrow(edsu)))
+  edsu <- matrix(0, ncol = 1, nrow = nrow(krill)/n_average)
+  for (i in 1:(nrow(krill)/n_average)) {
+    edsu[i, 1] <- mean(krill[((i-1)*n_average+1):(i*n_average), 1])
+  }
+    
+  krill_biomass <- sum(krill*50*10)/1000/1000 #actual biomass in Mt
   
-  #place krill into survey area
-#   for (i in 1:200) {
-#     edsu[krill_row[i], krill_col[i]] <- rnorm(1, 50)
-#   }
-#   
-#   for (i in 210:1000) {
-#     edsu[krill_row[i],  krill_col[i]] <- rnorm(1, 20)
-#   }
-  
-  krill_biomass <- sum(edsu*detected_width*edsu_width)/1000/1000 #actual biomass in Mt
-  
-  calculated_biomass <- mean(edsu[, 1])*survey_area_width*survey_area_length/1000/1000 #in Mt 
+  calculated_biomass <- mean(edsu)*survey_area_width*survey_area_length/1000/1000 #in Mt 
   
   return(list(krill_biomass = krill_biomass, calculated_biomass = calculated_biomass))
   
