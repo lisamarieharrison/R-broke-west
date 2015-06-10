@@ -10,6 +10,21 @@ acoustic_38  <- read.csv(file = "BROKE-West/Echoview/integrated data/broke_38khz
 acoustic_120 <- read.csv(file = "BROKE-West/Echoview/integrated data/broke_120khz_integration_hrp.csv", header = T)
 library(chron)
 
+#remove null rows from acoustic files
+files <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/250x2000 integration", full.names = T)
+for (i in files) {
+  
+  dat <- read.csv(i, header = T)
+  w <- !dat$ï..Region_ID == -9999
+  dat <- dat[w, ]
+  
+  write.csv(dat, i, row.names = F)
+  
+}
+
+
+
+
 #convert latitude/longitude from dms to decimal
 dat$latitude <- as.numeric(substr(dat$latitude, 1, 2)) + as.numeric(substr(dat$latitude, 5, 8))/60
 dat$longitude <- c(as.numeric(substr(dat$longitude[1:54], 1, 3)) + as.numeric(substr(dat$longitude[1:54], 6, 9))/60, as.numeric(substr(dat$longitude[55:length(dat$longitude)], 1, 2)) + as.numeric(substr(dat$longitude[55:length(dat$longitude)], 5, 8))/60)
