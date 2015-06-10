@@ -6,8 +6,6 @@
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/")
 dat   <- read.csv(file = "BROKE-West raw data/Air breathing predator/broke_seabirds.csv", header = T, fill = T)
 track <- read.csv(file  = "BROKE-West raw data/Echoview/integrated data/broke_cruise_track.csv", header = T)
-acoustic_38  <- read.csv(file = "BROKE-West/Echoview/integrated data/broke_38khz_integration_hrp.csv", header = T)
-acoustic_120 <- read.csv(file = "BROKE-West/Echoview/integrated data/broke_120khz_integration_hrp.csv", header = T)
 library(chron)
 
 #remove null rows from acoustic files
@@ -21,6 +19,66 @@ for (i in files) {
   write.csv(dat, i, row.names = F)
   
 }
+
+#read all acoustic data files and combine into one
+acoustic_38 <- rep(0, 85)
+files_38 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/250x2000 integration", full.names = T, pattern = "38kHz")
+for (i in files_38) {
+  dat <- read.csv(i, header = T)
+  acoustic_38 <- rbind(acoustic_38, dat)  
+}
+acoustic_38 <- acoustic_38[-1, ]
+colnames(acoustic_38) <- colnames(dat)
+
+acoustic_120 <- rep(0, 85)
+files_120 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/250x2000 integration", full.names = T, pattern = "120kHz")
+for (i in files_120) {
+  dat <- read.csv(i, header = T)
+  acoustic_120 <- rbind(acoustic_120, dat)  
+}
+acoustic_120 <- acoustic_120[-1, ]
+colnames(acoustic_120) <- colnames(dat)
+
+
+#calculate 120kHz - 38kHz for each 10x50 window
+sv_38 <- acoustic_38$Sv_mean
+sv_120 <- acoustic_120$Sv_mean
+sv_38[sv_38 > 500 | sv_38 < -500] <- NA
+sv_120[sv_120 > 500 | sv_120 < -100] <- NA
+noise <- is.na(sv_120)
+sv_diff <- sv_120 - sv_38
+
+
+#remove 120 - 38 kHz values outside of [1.02, 14.75] because these are unlikely to be krill
+#dB difference window is from Potts AAD report for KAOS data
+sv_diff[sv_diff < 2.5 | sv_diff > 14.7] <- NA
+sv_120[is.na(sv_diff)] <- NA
+
+sv <- 10^(sv_120/10)
+
+mvbs <- 10*log10(sv)
+mvbs[mvbs == -Inf] <- NA
+
+#convert to density using target strength (kg/m2 per interval)
+p <- 250*10 ^((mvbs - -42.22)/10)*1000
+
+#add zero krill intervals back in
+p[is.na(p)] <- 0
+
+#remove noise values
+p[p > 5000] <- NA
+
+#calculate interval length (m)
+interval_length <- 0
+for (k in 1:nrow(acoustic_38)) {
+  interval_length[k] <- (acoustic_38$Dist_E[k] - acoustic_38$Dist_S[k])
+}
+
+#calculate interval weighting
+interval_weight <- interval_length/sum(na.omit(interval_length))
+
+#calculate mean weighted density
+survey_mean <- sum(na.omit(p*interval_weight))
 
 
 
@@ -56,55 +114,6 @@ gps <- unique(track[,c('Latitude','Longitude')]) #filter unique track values
 plot(gps$Longitude, gps$Latitude, xlab = "Longitude", ylab = "Latitude")
 points(dat_sub$longitude, -dat_sub$latitude, col = "red", pch = 19)
 title("Cruise track (black) with sighting locations superimposed (red)")
-
-#calculate 120kHz - 38kHz for each 10x50 window
-sv_38 <- acoustic_38$Sv_mean
-sv_120 <- acoustic_120$Sv_mean
-sv_38[sv_38 > 500 | sv_38 < -500] <- NA
-sv_120[sv_120 > 500 | sv_120 < -100] <- NA
-noise <- is.na(sv_120)
-sv_diff <- sv_120 - sv_38
-
-
-#remove 120 - 38 kHz values outside of [1.02, 14.75] because these are unlikely to be krill
-#dB difference window is from Potts AAD report for KAOS data
-sv_diff[sv_diff < 2.5 | sv_diff > 14.7] <- NA
-sv_120[is.na(sv_diff)] <- NA
-
-sv <- 10^(sv_120/10)
-
-mvbs <- 0
-for (i in 1:length(unique(acoustic_38$Interval))) {
-  interval <- unique(acoustic_38$Interval)[i]
-  mvbs[i] <- 10*log10(sum(na.omit(sv[acoustic_38$Interval == interval]))/max(acoustic_38$Layer))
-}
-mvbs[mvbs == -Inf] <- NA
-
-#convert to density using target strength (kg/m2 per interval)
-p <- 250*10 ^((mvbs - -42.22)/10)*1000
-
-#add zero krill intervals back in
-p[is.na(p)] <- 0
-
-#remove noise intervals
-p[table(acoustic_120$Interval, noise)[, 2] == length(unique(acoustic_38$Layer))] <- NA
-
-#remove noise values
-p[p > 5000] <- NA
-
-#calculate interval length (m)
-interval_length <- 0
-acoustic_distance <- acoustic_38[acoustic_38$Layer == 2, ]
-for (k in 1:length(unique(acoustic_distance$Interval))) {
-  int = unique(acoustic_distance$Interval)[k]
-  interval_length[k] <- (acoustic_distance$Dist_E[acoustic_distance$Interval == int] - acoustic_distance$Dist_S[acoustic_distance$Interval == int])
-}
-
-#calculate interval weighting
-interval_weight <- interval_length/sum(na.omit(interval_length))
-
-#calculate mean weighted density
-transect_mean <- sum(na.omit(p*interval_weight))
 
 
 #------------------------------------------------------------------------------#
