@@ -7,6 +7,7 @@ setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/")
 dat   <- read.csv(file = "BROKE-West/Air breathing predator/broke_baleen.csv", header = T, fill = T)
 track <- read.csv(file  = "BROKE-West/Echoview/integrated data/broke_cruise_track.csv", header = T)
 library(chron)
+library(plyr)
 
 #remove null rows from acoustic files
 files <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T)
@@ -20,7 +21,7 @@ for (i in files) {
   
 }
 
-transect <- "01" #specify transect number as a character
+transect <- "02" #specify transect number as a character
 
 #read all acoustic data files and combine into one
 acoustic_38 <- matrix(0, ncol = 85)
@@ -75,14 +76,12 @@ sv_120[is.na(sv_diff)] <- NA
 
 sv <- 10^(sv_120/10)
 
-mvbs <- 0
-for (i in 1:length(unique(acoustic_38$unique_interval))) {
-  mvbs[i] = 10*log10(sum(na.omit(sv[acoustic_38$unique_interval == unique(acoustic_38$unique_interval)[i]])))
-}
+sv_mat <- as.data.frame(cbind(sv, acoustic_38$unique_interval))
+colnames(sv_mat) <- c("sv", "unique_interval")
+mvbs <- 10*log10(ddply(sv_mat, "unique_interval", numcolwise(sum), na.rm = TRUE)$sv/length(unique(acoustic_38$Layer)))
 mvbs[mvbs == -Inf] <- NA
 
-
-abc <- 10 ^((mvbs)/10)*2
+abc <- 10 ^((mvbs)/10)*250
 
 deg2rad <- function(deg) {
   #converts degrees to radians
@@ -111,7 +110,7 @@ gcd.hf <- function(lat1, long1, lat2, long2) {
 #calculate interval length (m) and time
 interval_length <- 0
 interval_time <- 0
-int_matrix <- acoustic_38[acoustic_38$Layer == 5, ]
+int_matrix <- acoustic_38[acoustic_38$Layer == 7, ]
 for (k in 1:nrow(int_matrix)) {
   interval_length[k] <- gcd.hf(int_matrix$Lat_S[k], int_matrix$Lon_S[k], int_matrix$Lat_E[k], int_matrix$Lon_E[k])
   time_start <- chron(times. = int_matrix$Time_S[k], format = "h:m:s")
@@ -127,6 +126,7 @@ abc_nm <- 0
 j <- 1
 n_int <- 0
 int_time <- rep("00:00:00", round((sum(interval_length)/2000)))
+nasc_length <- 0
 for (i in 1:(sum(interval_length)/2000)) {
   abc_nm[i]  <- 0
   cumulative_length <- 0
@@ -137,6 +137,7 @@ for (i in 1:(sum(interval_length)/2000)) {
     cumulative_length <- cumulative_length + interval_length[j]
     n_int[i] <- n_int[i] + 1
     int_time[i] <- as.character(chron(times.= int_time[i], format = "h:m:s") + chron(times. = interval_time[j], format = "h:m:s"))
+    nasc_length[i] <- cumulative_length
     if (j >= length(abc)) {
       stop()
     }
@@ -145,6 +146,10 @@ for (i in 1:(sum(interval_length)/2000)) {
 
 nasc <- (abc_nm/n_int)*4*pi*1852^2
 nasc <- nasc[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
+
+#weight by interval length
+nasc_length <- nasc_length[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
+
 
 #method 1
 p <- nasc*0.155
@@ -162,10 +167,10 @@ mean(p)
 #------------------------------------------------------------------------------#
 
 #calculate interval weighting
-interval_weight <- interval_length/sum(na.omit(interval_length))
+nasc_weight <- nasc_length/sum(na.omit(nasc_length))
 
 #calculate mean weighted density
-survey_mean <- sum(na.omit(p*interval_weight))
+sum(na.omit(p*nasc_weight))
 
 
 
