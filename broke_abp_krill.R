@@ -9,7 +9,7 @@ track <- read.csv(file  = "BROKE-West/Echoview/integrated data/broke_cruise_trac
 library(chron)
 
 #remove null rows from acoustic files
-files <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/10x50 integration", full.names = T)
+files <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T)
 for (i in files) {
   
   dat <- read.csv(i, header = T)
@@ -20,13 +20,13 @@ for (i in files) {
   
 }
 
-transect <- "03" #specify transect number as a character
+transect <- "01" #specify transect number as a character
 
 #read all acoustic data files and combine into one
-acoustic_38 <- matrix(0, ncol = ncol(dat))
-acoustic_120 <- matrix(0, ncol = ncol(dat))
-files_38 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/10x50 integration", full.names = T, pattern = paste("Transect", transect, ".*38kHz", sep = ""))
-files_120 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/10x50 integration", full.names = T, pattern = paste("Transect", transect, ".*120kHz", sep = ""))
+acoustic_38 <- matrix(0, ncol = 85)
+acoustic_120 <- matrix(0, ncol = 85)
+files_38 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T, pattern = paste("Transect", transect, ".*38kHz", sep = ""))
+files_120 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T, pattern = paste("Transect", transect, ".*120kHz", sep = ""))
 
 for (i in 1:length(files_38)) {
   dat_38 <- read.csv(files_38[i], header = T)
@@ -54,12 +54,11 @@ for (i in 1:length(files_38)) {
 acoustic_38 <- acoustic_38[-1, ]
 acoustic_120 <- acoustic_120[-1, ]
 
-int = 1
-for (i in 1:nrow(acoustic_38)) {
-  acoustic_38$unique_interval[i] <- int
-  if (acoustic_38$Layer[i] == 25) {
-    int = int + 1
-  } 
+max_layer <- max(acoustic_38$Layer)
+change_loc <- which(acoustic_38$Layer == max_layer)
+acoustic_38$unique_interval <- rep(1, nrow(acoustic_38))
+for (i in 1:(length(change_loc) - 1)) {
+  acoustic_38$unique_interval[(change_loc[i] + 1):change_loc[i+1]] <- i + 1
 }
 
 #calculate 120kHz - 38kHz for each 10x50 window
@@ -70,8 +69,7 @@ sv_120[sv_120 > 500 | sv_120 < -80] <- NA
 sv_diff <- sv_120 - sv_38
 
 
-#remove 120 - 38 kHz values outside of [1.02, 14.75] because these are unlikely to be krill
-#dB difference window is from Potts AAD report for KAOS data
+#remove 120 - 38 kHz values outside of [2, 16] because these are unlikely to be krill
 sv_diff[sv_diff <= 2 | sv_diff >= 16] <- NA
 sv_120[is.na(sv_diff)] <- NA
 
@@ -84,7 +82,7 @@ for (i in 1:length(unique(acoustic_38$unique_interval))) {
 mvbs[mvbs == -Inf] <- NA
 
 
-abc <- 10 ^((mvbs)/10)*10
+abc <- 10 ^((mvbs)/10)*2
 
 deg2rad <- function(deg) {
   #converts degrees to radians
