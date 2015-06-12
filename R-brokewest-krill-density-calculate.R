@@ -9,7 +9,7 @@ library(plyr)
 
 
 
-transect <- "01" #specify transect number as a character
+transect <- "10" #specify transect number as a character
 
 #read all acoustic data files and combine into one
 acoustic_38 <- matrix(0, ncol = 86)
@@ -105,7 +105,7 @@ acoustic_38$Lat_S[acoustic_38$Lat_S == 999] <- NA
 acoustic_38$Lon_S[acoustic_38$Lon_S == 999] <- NA
 acoustic_38$Lat_E[acoustic_38$Lat_E == 999] <- NA
 acoustic_38$Lon_E[acoustic_38$Lon_E == 999] <- NA
-int_matrix <- acoustic_38[acoustic_38$Layer == 7, ]
+int_matrix <- acoustic_38[acoustic_38$Layer == min(acoustic_38$Layer), ]
 for (k in 1:nrow(int_matrix)) {
   interval_length[k] <- gcd.hf(int_matrix$Lat_S[k], int_matrix$Lon_S[k], int_matrix$Lat_E[k], int_matrix$Lon_E[k])
   time_start <- chron(times. = int_matrix$Time_S[k], format = "h:m:s")
@@ -117,46 +117,65 @@ for (k in 1:nrow(int_matrix)) {
 }
 interval_length[is.nan(interval_length) | is.na(interval_length)] <- 0
 abc[interval_length == 0] <- NA
+abc[is.na(abc)] <- 0
 
 set_edsu_length <- 2000 #choose the edsu length in m
+interval_length[interval_length > set_edsu_length] <- 0
 
-abc_nm <- 0
+
 j <- 1
 n_int <- 0
-int_time <- rep("00:00:00", round((sum(interval_length)/set_edsu_length)))
+int_time <- rep("00:00:00", 5000)
 nasc_length <- 0
 nasc_cluster <- 0
-for (i in 1:(sum(interval_length)/set_edsu_length)) {
-  abc_nm[i]  <- 0
+bin_include <- 0
+for (i in 1:5000) {
   cumulative_length <- 0
   n_int[i] <- 0
   nasc_cluster[i] <- NA
   while ((cumulative_length + interval_length[j]) < set_edsu_length) {
-    abc_nm[i] <- abc_nm[i] + abc[j]
+    bin_include[j] <- i
     j <- j + 1
     cumulative_length <- cumulative_length + interval_length[j]
     nasc_length[i] <- cumulative_length
     nasc_cluster[i] <- abc_cluster[j]
     n_int[i] <- n_int[i] + 1
     int_time[i] <- as.character(chron(times.= int_time[i], format = "h:m:s") + chron(times. = interval_time[j], format = "h:m:s"))
-    if (j >= length(abc)) {
+    if (j > length(abc)) {
       stop()
     }
   }
+}
+int_time <- int_time[1:i]
+int_time[int_time == "NA"] <- "00:00:00"
+
+
+bin <- as.data.frame(cbind(interval_length, bin_include))
+colnames(bin) <- c("interval_length", "bin_include")
+nasc_length <- ddply(bin, "bin_include", numcolwise(sum), na.rm = TRUE)$interval_length
+
+nasc_weight <- 0
+for (i in unique(bin_include)) {
+  nasc_weight[bin_include == i] <- interval_length[bin_include == i]/nasc_length[i]
+}
+
+abc_nm <- 0
+for (i in 1:length(nasc_length)) {
+  abc_nm[i] <- sum(abc[bin_include == i]*nasc_weight[bin_include == i])
 }
 
 conversion_factor_1 <- c(0.1587, 0.1548, 0.1516)
 conversion_factor_2 <- c(0.6373, 0.6101, 0.7617)
 
 #method 1
-nasc <- (abc_nm/n_int)*(conversion_factor_1[nasc_cluster])
+nasc <- (abc_nm)*(conversion_factor_1[nasc_cluster])
 p <- nasc[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
 p[is.na(p)] <- 0
 p[p > 5000] <- NA
 mean(na.omit(p))
 
 #method 2
-nasc <- (abc_nm/n_int)*(conversion_factor_2[nasc_cluster])
+nasc <- (abc_nm)*(conversion_factor_2[nasc_cluster])
 p <- nasc[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
 p[is.na(p)] <- 0
 p[p > 5000] <- NA
