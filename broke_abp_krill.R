@@ -23,7 +23,7 @@ for (i in files) {
   
 }
 
-transect <- "02" #specify transect number as a character
+transect <- "06" #specify transect number as a character
 
 #read all acoustic data files and combine into one
 acoustic_38 <- matrix(0, ncol = 86)
@@ -159,8 +159,8 @@ for (i in 1:(sum(interval_length)/set_edsu_length)) {
   }
 }
 
-conversion_factor_1 <- c(0.1548, 0.1516, 0.1587)
-conversion_factor_2 <- c(0.6101, 0.7617, 0.6373)
+conversion_factor_1 <- c(0.1587, 0.1548, 0.1516)
+conversion_factor_2 <- c(0.6373, 0.6101, 0.7617)
 
 #method 1
 nasc <- (abc_nm/n_int)*(conversion_factor_1[nasc_cluster])
