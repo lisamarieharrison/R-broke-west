@@ -6,6 +6,8 @@
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/")
 dat   <- read.csv(file = "BROKE-West/Air breathing predator/broke_baleen.csv", header = T, fill = T)
 track <- read.csv(file  = "BROKE-West/Echoview/integrated data/broke_cruise_track.csv", header = T)
+cluster <- read.csv("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Krill target strength/EvToCluster.csv", header = T)
+
 library(chron)
 library(plyr)
 
@@ -24,7 +26,7 @@ for (i in files) {
 transect <- "02" #specify transect number as a character
 
 #read all acoustic data files and combine into one
-acoustic_38 <- matrix(0, ncol = 85)
+acoustic_38 <- matrix(0, ncol = 86)
 acoustic_120 <- matrix(0, ncol = 85)
 files_38 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T, pattern = paste("Transect", transect, ".*38kHz", sep = ""))
 files_120 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T, pattern = paste("Transect", transect, ".*120kHz", sep = ""))
@@ -32,6 +34,10 @@ files_120 <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/E
 for (i in 1:length(files_38)) {
   dat_38 <- read.csv(files_38[i], header = T)
   dat_120 <- read.csv(files_120[i], header = T)
+  
+  ev_files <- list.files("C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/2x25 integration", full.names = T, pattern = paste("38kHz", sep = ""))
+  
+  dat_38$cluster_alloc <- rep(cluster$cluster[which(ev_files == files_38[i])], nrow(dat_38))
   
   dat_38 <- dat_38[dat_38$Interval %in% unique(dat_120$Interval), ]
   dat_120 <- dat_120[dat_120$Interval %in% unique(dat_38$Interval), ]
@@ -74,14 +80,13 @@ sv_diff <- sv_120 - sv_38
 sv_diff[sv_diff <= 2 | sv_diff >= 16] <- NA
 sv_120[is.na(sv_diff)] <- NA
 
-sv <- 10^(sv_120/10)
+sv <- 10^(sv_120/10)*2*4*pi*1852^2
 
-sv_mat <- as.data.frame(cbind(sv, acoustic_38$unique_interval))
-colnames(sv_mat) <- c("sv", "unique_interval")
-mvbs <- 10*log10(ddply(sv_mat, "unique_interval", numcolwise(sum), na.rm = TRUE)$sv/length(unique(acoustic_38$Layer)))
-mvbs[mvbs == -Inf] <- NA
-
-abc <- 10 ^((mvbs)/10)*250
+sv_mat <- as.data.frame(cbind(sv, acoustic_38$unique_interval, acoustic_38$cluster_alloc))
+colnames(sv_mat) <- c("sv", "unique_interval", "cluster")
+abc <- ddply(sv_mat, "unique_interval", numcolwise(sum), na.rm = TRUE)$sv
+abc[abc == -Inf] <- NA
+abc_cluster <- ddply(sv_mat, "unique_interval", numcolwise(mean), na.rm = TRUE)$cluster
 
 deg2rad <- function(deg) {
   #converts degrees to radians
@@ -110,6 +115,10 @@ gcd.hf <- function(lat1, long1, lat2, long2) {
 #calculate interval length (m) and time
 interval_length <- 0
 interval_time <- 0
+acoustic_38$Lat_S[acoustic_38$Lat_S == 999] <- NA
+acoustic_38$Lon_S[acoustic_38$Lon_S == 999] <- NA
+acoustic_38$Lat_E[acoustic_38$Lat_E == 999] <- NA
+acoustic_38$Lon_E[acoustic_38$Lon_E == 999] <- NA
 int_matrix <- acoustic_38[acoustic_38$Layer == 7, ]
 for (k in 1:nrow(int_matrix)) {
   interval_length[k] <- gcd.hf(int_matrix$Lat_S[k], int_matrix$Lon_S[k], int_matrix$Lat_E[k], int_matrix$Lon_E[k])
@@ -120,48 +129,52 @@ for (k in 1:nrow(int_matrix)) {
     interval_time[k] <- "00:00:00"
   }
 }
-interval_length[is.nan(interval_length)] <- 0
+interval_length[is.nan(interval_length) | is.na(interval_length)] <- 0
+abc[interval_length == 0] <- NA
+
+set_edsu_length <- 2000 #choose the edsu length in m
 
 abc_nm <- 0
 j <- 1
 n_int <- 0
-int_time <- rep("00:00:00", round((sum(interval_length)/2000)))
+int_time <- rep("00:00:00", round((sum(interval_length)/set_edsu_length)))
 nasc_length <- 0
-for (i in 1:(sum(interval_length)/2000)) {
+nasc_cluster <- 0
+for (i in 1:(sum(interval_length)/set_edsu_length)) {
   abc_nm[i]  <- 0
   cumulative_length <- 0
   n_int[i] <- 0
-  while (cumulative_length < 2000) {
+  nasc_cluster[i] <- NA
+  while ((cumulative_length + interval_length[j]) < set_edsu_length) {
     abc_nm[i] <- abc_nm[i] + abc[j]
     j <- j + 1
     cumulative_length <- cumulative_length + interval_length[j]
+    nasc_length[i] <- cumulative_length
+    nasc_cluster[i] <- abc_cluster[j]
     n_int[i] <- n_int[i] + 1
     int_time[i] <- as.character(chron(times.= int_time[i], format = "h:m:s") + chron(times. = interval_time[j], format = "h:m:s"))
-    nasc_length[i] <- cumulative_length
     if (j >= length(abc)) {
       stop()
     }
   }
 }
 
-nasc <- (abc_nm/n_int)*4*pi*1852^2
-nasc <- nasc[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
-
-#weight by interval length
-nasc_length <- nasc_length[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
-
+conversion_factor_1 <- c(0.1548, 0.1516, 0.1587)
+conversion_factor_2 <- c(0.6101, 0.7617, 0.6373)
 
 #method 1
-p <- nasc*0.155
-p[p > 5000] <- NA
+nasc <- (abc_nm/n_int)*(conversion_factor_1[nasc_cluster])
+p <- nasc[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
 p[is.na(p)] <- 0
+p[p > 5000] <- NA
 mean(p)
 
 #method 2
-p <- nasc*0.6697
-p[p > 5000] <- NA
+nasc <- (abc_nm/n_int)*(conversion_factor_2[nasc_cluster])
+p <- nasc[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
 p[is.na(p)] <- 0
-mean(p)
+p[p > 5000] <- NA
+mean(na.omit(p))
 
 
 #------------------------------------------------------------------------------#
@@ -172,8 +185,16 @@ nasc_weight <- nasc_length/sum(na.omit(nasc_length))
 #calculate mean weighted density
 sum(na.omit(p*nasc_weight))
 
+#weight by interval length
+nasc <- abc*4*pi*1852^2
+interval_weight <- (interval_length/sum(na.omit(interval_length)))[1:length(nasc)]
 
+p <- nasc*0.6697
+p[is.na(p)] <- 0
+p[p > 5000] <- NA
+sum(na.omit(p*interval_weight))
 
+#------------------------------- predator prey --------------------------------#
 
 #plot locations - full data set
 plot(dat$longitude, dat$latitude, xlab = "Longitude", ylab = "Latitude")
