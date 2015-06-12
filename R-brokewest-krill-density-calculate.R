@@ -165,8 +165,8 @@ for (i in 1:length(nasc_length)) {
 nasc_length <- nasc_length[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
 
 
-conversion_factor_1 <- c(0.1587, 0.1548, 0.1516)
-conversion_factor_2 <- c(0.6373, 0.6101, 0.7617)
+conversion_factor_1 <- c(0.1516, 0.1587, 0.1548)
+conversion_factor_2 <- c(0.7617, 0.6373, 0.6101)
 
 #method 1
 nasc <- (abc_nm)*(conversion_factor_1[nasc_cluster])
