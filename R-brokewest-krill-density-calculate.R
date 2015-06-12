@@ -9,7 +9,7 @@ library(plyr)
 
 
 
-transect <- "02" #specify transect number as a character
+transect <- "01" #specify transect number as a character
 
 #read all acoustic data files and combine into one
 acoustic_38 <- matrix(0, ncol = 86)
@@ -148,8 +148,6 @@ for (i in 1:5000) {
 }
 int_time <- int_time[1:i]
 int_time[int_time == "NA"] <- "00:00:00"
-nasc_length <- nasc_length[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
-
 
 bin <- as.data.frame(cbind(interval_length, bin_include))
 colnames(bin) <- c("interval_length", "bin_include")
@@ -164,6 +162,8 @@ abc_nm <- 0
 for (i in 1:length(nasc_length)) {
   abc_nm[i] <- sum(abc[bin_include == i]*nasc_weight[bin_include == i])
 }
+nasc_length <- nasc_length[-!chron(times. = int_time, format = "h:m:s") > chron(times. = "01:00:00", format = "h:m:s")]
+
 
 conversion_factor_1 <- c(0.1587, 0.1548, 0.1516)
 conversion_factor_2 <- c(0.6373, 0.6101, 0.7617)
