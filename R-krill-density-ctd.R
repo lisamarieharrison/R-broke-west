@@ -22,18 +22,18 @@ for (i in 1:118) {
   
   #for each row, find the krill density
   sv_120 <- k120[, 14:ncol(k120)]
-  sv_120[sv_120 < -90] <- NA
+  sv_120[sv_120 > 500 | sv_120 < -80] <- NA
   sv_38 <- k38[, 14:ncol(k38)]
-  sv_38[sv_38 < -500] <- NA
+  sv_38[sv_38 > 500 | sv_38 < -500] <- NA
   
   
   #calculate difference window
   sv_diff <- k120[, 14:ncol(k120)] - k38[, 14:ncol(k38)]
-  sv_diff[sv_diff < 1.02 | sv_diff > 14.75] <- NA
+  sv_diff[sv_diff <= 2 | sv_diff >= 16] <- NA
   sv_120[is.na(sv_diff)] <- NA
   
   sv <- 10^(sv_120/10)
-  
+    
   #bin data into 125 evenly spaced bins
   meanBins <- function(x) {
     
@@ -46,11 +46,10 @@ for (i in 1:118) {
   
   mvbs <- 10*log10(rowMeans(x, na.rm = TRUE))
   
+  #convert to density using target strength (g/m2 per interval)
+  p <- 10 ^((mvbs - -42.22)/10)*1000*2
   
-  #convert to density using target strength (kg/m2 per interval)
-  p <- 2*10 ^((mvbs - -42.22)/10)*1000
-  
-  write.csv(p, paste("density/krill_density_kgm2_stn_", i, ".csv", sep = ""), row.names = F)
+  write.csv(p, paste("density/krill_density_gm2_stn_", i, ".csv", sep = ""), row.names = F)
   
   message(paste("Finished calculating density for station", i))
   
