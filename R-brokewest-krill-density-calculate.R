@@ -9,7 +9,7 @@ library(plyr)
 
 
 
-transect <- "01" #specify transect number as a character
+transect <- "03" #specify transect number as a character
 
 #read all acoustic data files and combine into one
 acoustic_38 <- matrix(0, ncol = 86)
