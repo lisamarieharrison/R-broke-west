@@ -5,7 +5,11 @@
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/ctd")
 library(fields)
 
-for (i in 1:118) {
+for (i in 68:118) {
+  
+  while(paste("stn_", i, "_extracted_120khz.csv", sep = "") %in% list.files("120kHz/") == FALSE) {
+    i <- i + 1
+  }
   
   k120 <- read.csv(paste("120kHz/stn_", i, "_extracted_120khz.csv", sep = ""), header = F, skip = 1)
   k38 <- read.csv(paste("38kHz/stn_", i, "_extracted_38khz.csv", sep = ""), header = F, skip = 1)
