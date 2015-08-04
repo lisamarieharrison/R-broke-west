@@ -26,8 +26,8 @@ update(lat.plot)
 hist(density, main = "Histogram of krill density", xlab = "krill density (g/m2)")
 
 #plot krill against fluoro
-plot(density, exp(fluoro$l.obs), xlab = "krill density (g/m2)", pch = 19,
-     ylab = "phytoplankton fluorescence")
+plot(exp(fluoro$l.obs), density, ylab = "krill density (g/m2)", pch = 19,
+     xlab = "phytoplankton fluorescence")
 title("Krill vs Phytoplankton")
 
 #plot log krill against log fluoro

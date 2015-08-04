@@ -37,7 +37,7 @@ for (i in 68:118) {
   sv_120[is.na(sv_diff)] <- NA
   
   sv <- 10^(sv_120/10)
-    
+      
   #bin data into 125 evenly spaced bins
   meanBins <- function(x) {
     
@@ -52,6 +52,7 @@ for (i in 68:118) {
   
   #convert to density using target strength (g/m2 per interval)
   p <- 10 ^((mvbs - -42.22)/10)*1000*2
+  
   
   write.csv(p, paste("density/krill_density_gm2_stn_", i, ".csv", sep = ""), row.names = F)
   
