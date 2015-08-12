@@ -39,3 +39,10 @@ title("log Krill vs log Phytoplankton")
 density <- ksmooth(c(1:length(density)), density, bandwidth = 11)$y
 
 
+#plot krill against fluoro
+plot(fluoro$sal, log(density), ylab = "krill density (g/m2)", pch = 19)
+
+
+
+
+
