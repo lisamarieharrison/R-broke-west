@@ -35,12 +35,13 @@ plot(exp(fluoro$l.obs), p, ylab = "krill density (g/m2)", pch = 19,
 #plot log krill against environmental variables
 plot(cbind(fluoro[c(2, 6:9)], log(p)))
 
-#optional kernal smoothing of krill density
-density <- ksmooth(c(1:length(density)), density, bandwidth = 11)$y
+#plot krill presence/absence against environmental variables
+pa <- rep(0, length(p))
+pa[p > 0] <- 1
+plot(cbind(fluoro[c(2, 6:9)], pa))
 
 
-#plot krill against fluoro
-plot(fluoro$sal, log(density), ylab = "krill density (g/m2)", pch = 19)
+
 
 
 
