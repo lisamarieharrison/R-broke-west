@@ -65,8 +65,8 @@ for (i in 1:length(unique(ctd$stn))) {
   sv <- 10^(sv_120/10)
   
   mvbs <- 0
-  for (i in unique(krill_38$Layer)) {
-    mvbs[i] <- 10*log10(sum(na.omit(sv[krill_38$Layer == i]))/length(sv[krill_38$Layer == i]))
+  for (j in unique(krill_38$Layer)) {
+    mvbs[j] <- 10*log10(sum(na.omit(sv[krill_38$Layer == j]))/length(sv[krill_38$Layer == j]))
   }
   mvbs <- mvbs[-c(1:(min(krill_38$Layer) - 1))]
   mvbs[mvbs == -Inf] <- NA
@@ -74,9 +74,13 @@ for (i in 1:length(unique(ctd$stn))) {
   #convert to density using target strength (kg/m2 per interval)
   p <- 2*10 ^((mvbs - -42.22)/10)*1000
   
-  out <- cbind(rep(stn, length(p)), p, round(unique(krill_38$Depth_mean)))
+  depth <- round(aggregate(krill_38$Depth_mean, by = list(krill_38$Layer), FUN = "mean"))$x
   
-  write.table(out, "kaos_krill_ctd.csv", sep = ",", row.names = F, col.names = F, append = T)  
+  out <- cbind(rep(stn, length(p)), p, depth)
+  
+  write.table(out, "brokewest_krill_ctd.csv", sep = ",", row.names = F, col.names = F, append = T)  
+  
+  print(i)
   
 }
 
