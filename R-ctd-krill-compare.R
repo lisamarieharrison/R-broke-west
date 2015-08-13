@@ -41,6 +41,17 @@ pa[p > 0] <- 1
 plot(cbind(fluoro[c(2, 6:9)], pa))
 
 
+par(mfrow = c(1, 3))
+boxplot(fluoro$oxy ~ pa)
+boxplot(fluoro$sal ~ pa)
+boxplot(fluoro$z ~ pa)
+
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z))
+colnames(d) <- c("pa", "oxy", "sal", "z")
+
+pa.lm <- glm(pa ~ oxy + sal + z, dat = d, family = "binomial")
+summary(pa.lm)
+
 
 
 
