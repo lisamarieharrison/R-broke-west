@@ -42,8 +42,8 @@ for (i in 1:length(unique(ctd$stn))) {
   krill_120$Time_S <- chron(times. = krill_120$Time_S, format = "h:m:s")
   krill_120$Time_E <- chron(times. = krill_120$Time_E, format = "h:m:s")
   
-  krill_38 <- krill_38[krill_38$Time_S > (start_time - 0.05) & krill_38$Time_E < start_time, ]  
-  krill_120 <- krill_120[krill_120$Time_S > (start_time - 0.05) & krill_120$Time_E < start_time, ]  
+  krill_38 <- krill_38[krill_38$Time_S > (start_time - 0.025) & krill_38$Time_E < start_time, ]  
+  krill_120 <- krill_120[krill_120$Time_S > (start_time - 0.025) & krill_120$Time_E < start_time, ]  
   
   if (nrow(krill_38) == 0) {
     next()
@@ -68,7 +68,7 @@ for (i in 1:length(unique(ctd$stn))) {
   #dB difference window is from Potts AAD report for KAOS data
   sv_diff[sv_diff < 1.02 | sv_diff > 14.75] <- NA
   sv_120[is.na(sv_diff)] <- NA
-    
+  
   #convert to density using target strength (kg/m2 per interval) and average across intervals
   p <- 2*10 ^((sv_120 - -42.22)/10)*1000
   p[is.na(p)] <- 0
