@@ -42,8 +42,8 @@ for (i in 1:length(unique(ctd$stn))) {
   krill_120$Time_S <- chron(times. = krill_120$Time_S, format = "h:m:s")
   krill_120$Time_E <- chron(times. = krill_120$Time_E, format = "h:m:s")
   
-  krill_38 <- krill_38[krill_38$Time_S > (start_time - 0.025) & krill_38$Time_E < start_time, ]  
-  krill_120 <- krill_120[krill_120$Time_S > (start_time - 0.025) & krill_120$Time_E < start_time, ]  
+  krill_38 <- krill_38[krill_38$Time_S > (start_time - 0.02) & krill_38$Time_E < start_time, ]  
+  krill_120 <- krill_120[krill_120$Time_S > (start_time - 0.02) & krill_120$Time_E < start_time, ]  
   
   if (nrow(krill_38) == 0) {
     next()
