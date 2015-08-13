@@ -53,7 +53,7 @@ for (i in 1:length(unique(ctd$stn))) {
   krill_38 <- krill_38[krill_38$Layer > 0, ]
   krill_120 <- krill_120[krill_120$Layer > 0, ]  
   
-  if (is.na(unique(krill_38$Layer))) {
+  if (length(unique(krill_38$Layer)) <= 1) {
     next()
   }
   
@@ -68,19 +68,11 @@ for (i in 1:length(unique(ctd$stn))) {
   #dB difference window is from Potts AAD report for KAOS data
   sv_diff[sv_diff < 1.02 | sv_diff > 14.75] <- NA
   sv_120[is.na(sv_diff)] <- NA
-  
-  #convert to density using target strength (kg/m2 per interval)
-  sv <- 10^(sv_120/10)
-  
-  mvbs <- 0
-  for (j in unique(krill_38$Layer)) {
-    mvbs[j] <- 10*log10(sum(na.omit(sv[krill_38$Layer == j]))/length(sv[krill_38$Layer == j]))
-  }
-  mvbs <- mvbs[-c(1:(min(krill_38$Layer) - 1))]
-  mvbs[mvbs == -Inf] <- NA
-  
-  #convert to density using target strength (kg/m2 per interval)
-  p <- 2*10 ^((mvbs - -42.22)/10)*1000
+    
+  #convert to density using target strength (kg/m2 per interval) and average across intervals
+  p <- 2*10 ^((sv_120 - -42.22)/10)*1000
+  p[is.na(p)] <- 0
+  p <- aggregate(p, by = list(krill_38$Layer), FUN = "mean")$x  
   
   depth <- round(aggregate(krill_38$Depth_mean, by = list(krill_38$Layer), FUN = "mean"))$x
   
