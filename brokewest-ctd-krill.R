@@ -45,13 +45,17 @@ for (i in 1:length(unique(ctd$stn))) {
   krill_38 <- krill_38[krill_38$Time_S > (start_time - 0.05) & krill_38$Time_E < start_time, ]  
   krill_120 <- krill_120[krill_120$Time_S > (start_time - 0.05) & krill_120$Time_E < start_time, ]  
   
-  if (nrow(krill_38) == 0 | is.na(unique(krill_38$Layer))) {
+  if (nrow(krill_38) == 0) {
     next()
   }
   
   #remove layers of -1 
   krill_38 <- krill_38[krill_38$Layer > 0, ]
   krill_120 <- krill_120[krill_120$Layer > 0, ]  
+  
+  if (is.na(unique(krill_38$Layer))) {
+    next()
+  }
   
   #calculate 120kHz - 38kHz for each 10x50 window
   sv_38 <- krill_38$Sv_mean
