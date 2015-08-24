@@ -5,7 +5,7 @@
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West/Echoview/Extracted data/ctd")
 library(fields)
 
-for (i in 68:118) {
+for (i in 1:118) {
   
   while(paste("stn_", i, "_extracted_120khz.csv", sep = "") %in% list.files("120kHz/") == FALSE) {
     i <- i + 1
@@ -31,13 +31,7 @@ for (i in 68:118) {
   sv_38[sv_38 > 500 | sv_38 < -500] <- NA
   
   
-  #calculate difference window
-  sv_diff <- k120[, 14:ncol(k120)] - k38[, 14:ncol(k38)]
-  sv_diff[sv_diff <= 2 | sv_diff >= 16] <- NA
-  sv_120[is.na(sv_diff)] <- NA
   
-  sv <- 10^(sv_120/10)
-      
   #bin data into 125 evenly spaced bins
   meanBins <- function(x) {
     
@@ -46,21 +40,35 @@ for (i in 68:118) {
     return(y)
     
   }
-  x <- apply(sv, 1, meanBins)
   
-  mvbs <- 10*log10(rowMeans(x, na.rm = TRUE))
+  
+  sv_38 <- replace(sv_38, sv_38 == -9.9e+37, NA)
+  sv <- 10^(sv_38/10)
+  mvbs_38 <- 10*log10(apply(sv, 2, mean, na.rm = TRUE))
+  
+  
+  sv_120 <- replace(sv_120, sv_120 == -9.9e+37, NA)
+  sv <- 10^(sv_120/10)
+  mvbs_120 <- 10*log10(apply(sv, 2, mean, na.rm = TRUE))
+  
+  
+  sv_38_bin <- meanBins(mvbs_38)
+  sv_120_bin <- meanBins(mvbs_120)
+  
+  #calculate difference window
+  sv_diff <- sv_120_bin - sv_38_bin
+  sv_diff[sv_diff <= 2.5 | sv_diff >= 14.7] <- NA
+  sv_120_bin[is.na(sv_diff)] <- NA
   
   #convert to density using target strength (g/m2 per interval)
-  p <- 10 ^((mvbs - -42.22)/10)*1000*2
-  
+  p <- 10 ^((sv_120_bin - -42.22)/10)*1000*2
+  p[is.na(p)] <- 0
   
   write.csv(p, paste("density/krill_density_gm2_stn_", i, ".csv", sep = ""), row.names = F)
   
   message(paste("Finished calculating density for station", i))
   
 }
-
-
 
 
 
