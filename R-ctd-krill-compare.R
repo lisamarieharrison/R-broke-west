@@ -56,8 +56,14 @@ pa.lm <- glm(pa ~ sal + z + oxy + par + stn - 1, dat = d, family = "binomial")
 summary(pa.lm)
 
 #mixed model with station random effect
-pa.lm <- glmer(pa ~ sal + z + par + (1|stn), dat = d, family = "binomial")
 
+d$sal <- scale(d$sal)
+d$z <- scale(d$z)
+d$par <- scale(d$par)
+d$temp <- scale(d$temp)
+
+pa.lm <- glmer(pa ~ sal + z + par + temp + - 1 + (1|stn), dat = d, family = "binomial")
+summary(pa.lm)
 
 #table of false and true 0 and 1
 table(na.omit(d)$pa, round(fitted(pa.lm)))
@@ -92,6 +98,7 @@ M.ROC <- ROC.curve(seq(0, 1, by = 0.01))
 par(mfrow = c(1, 1))
 plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", ylab = "True Positive Rate")
 title("ROC curve")
+lines(c(0, 1), c(0, 1), col = "grey")
 
 #calculate the area under the ROC curve (0.5 = bad, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
@@ -156,15 +163,25 @@ for(i in 1:nlevels(dat$stn)) {
 
 
 
+
+colfunc <- colorRampPalette(c("darkblue", "lightblue"))
+plot(fluoro$z, log(p),  col = colfunc(10)[findInterval(as.numeric(fluoro$temp)+3, seq(2:5))], pch = 19)
+
+colPal <- rep("black", length(p))
+w <- unique(fluoro$stn[fluoro$temp > 0])
+colPal[fluoro$stn %in% w] <- "red"
+plot(fluoro$z, log(p),  col = colPal, pch = 19)
+
+
 plot(fluoro$z, log(p), col = "white")
 for (i in unique(fluoro$stn)) {
-  log_p <- na.omit(log(p)[fluoro$stn == i])
-  depth <- fluoro$z[fluoro$stn == i][which(!is.na(log(p)[fluoro$stn == i]))]
-  points(depth, log_p, type = "l")
+  x <- fluoro$z[fluoro$stn == i & pa == 1]
+  y <- log(p)[fluoro$stn == i & pa == 1]
+  xy <- data.frame(x, y)
+  xy <- na.omit(xy)
+  xy <- xy[order(xy$x), ]
+  points(xy$x, xy$y, type = "l", col = i)
 }
-
-
-
 
 
 
