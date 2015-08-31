@@ -31,6 +31,7 @@ length(unique(fluoro$stn))
 #plot log krill against environmental variables
 plot(cbind(fluoro[c(1:2, 6:9)], log(p)))
 
+
 #plot krill presence/absence against environmental variables
 pa <- rep(NA, length(p))
 pa[p > 0] <- 1
@@ -39,12 +40,12 @@ plot(cbind(fluoro[c(1:2, 6:9)], pa))
 
 #boxplots for presence/absence
 par(mfrow = c(1, 6))
-boxplot(fluoro$oxy ~ pa)
-boxplot(fluoro$sal ~ pa)
-boxplot(fluoro$z ~ pa)
-boxplot(fluoro$par ~ pa)
-boxplot(fluoro$temp ~ pa)
-boxplot(fluoro$l.obs ~ pa)
+boxplot(fluoro$oxy ~ pa, main = "Oxygen")
+boxplot(fluoro$sal ~ pa, main = "Salinity")
+boxplot(fluoro$z ~ pa, main = "Depth")
+boxplot(fluoro$par ~ pa, main = "PAR")
+boxplot(fluoro$temp ~ pa, main = "temp")
+boxplot(fluoro$l.obs ~ pa, main = "l.obs")
 
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn")
@@ -52,7 +53,7 @@ d <- na.omit(d)
 
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
 
-pa.lm <- glm(pa ~ sal + z + oxy + par + stn - 1, dat = d, family = "binomial")
+pa.lm <- glm(pa ~ z + temp + sal + par + oxy, dat = d, family = "binomial")
 summary(pa.lm)
 
 #mixed model with station random effect
@@ -61,8 +62,9 @@ d$sal <- scale(d$sal)
 d$z <- scale(d$z)
 d$par <- scale(d$par)
 d$temp <- scale(d$temp)
+d$oxy <- scale(d$oxy)
 
-pa.lm <- glmer(pa ~ sal + z + par + temp + - 1 + (1|stn), dat = d, family = "binomial")
+pa.lm <- glmer(pa ~ z + par + oxy + (1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
 #table of false and true 0 and 1
@@ -72,8 +74,8 @@ table(na.omit(d)$pa, round(fitted(pa.lm)))
 vif(pa.lm)
 
 #calculate sensitivity and specificity
-sensitivity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa))
-specificity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa))
+sensitivity(as.factor(na.omit(d)$pa), as.factor(round(fitted(pa.lm))))
+specificity(as.factor(na.omit(d)$pa), as.factor(round(fitted(pa.lm))))
 
 #plot a ROC curve for the binomial glm
 roc.curve <- function(s, print = FALSE) {
@@ -95,20 +97,18 @@ roc.curve(threshold, print = TRUE)
 ROC.curve <- Vectorize(roc.curve)
 M.ROC <- ROC.curve(seq(0, 1, by = 0.01))
 
-par(mfrow = c(1, 1))
-plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", ylab = "True Positive Rate")
-title("ROC curve")
-lines(c(0, 1), c(0, 1), col = "grey")
+png(file = "roc.png", width = 1000, height = 750, res = 100)
+par(mfrow = c(1, 1), mar = c(5, 5, 1, 1))
+plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", ylab = "True Positive Rate", cex.lab = 2, cex.axis = 2)
+#title("ROC curve")
+lines(c(0, 1), c(0, 1), col = "red")
+dev.off()
 
 #calculate the area under the ROC curve (0.5 = bad, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
 
 
 #------------------ LINEAR MODELS FOR DENSITY GIVEN PRESENCE ------------------#
-
-#plot log(density) and depth, the best predictor
-par(mfrow = c(1, 1))
-plot(fluoro$z, log(p), col = fluoro$stn, pch = 19)
 
 #subset data frame to get only presence
 dat <- d[d$pa == 1, ]
@@ -132,7 +132,7 @@ xy <- xy[order(xy[, 1]), ]
 points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
 title("log(krill) vs depth")
 
-for(i in 1:nlevels(dat$stn)) {
+for (i in 1:nlevels(dat$stn)) {
   y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i] + p.lm$coefficients$fixed[2]*dat$z[dat$stn == levels(dat$stn)[i]]
   x <- dat$z[dat$stn == levels(dat$stn)[i]]
   xy <- cbind(x, y)
@@ -152,9 +152,95 @@ xy <- xy[order(xy[, 1]), ]
 points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
 title("log(krill) vs depth")
 
-for(i in 1:nlevels(dat$stn)) {
+for (i in 1:nlevels(dat$stn)) {
   y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*dat$z[dat$stn == levels(dat$stn)[i]]
   x <- dat$z[dat$stn == levels(dat$stn)[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l", col = i)
+}
+
+
+#------------------------ PLOTS ON THE NATURAL SCALE --------------------------#
+
+#plot of model with random intercept and slope on log scale
+p.lm <- lme(log(p) ~ z, dat = dat, random =~ 1 + z | stn, na.action = "na.omit")
+r.squared.lme(p.lm)
+
+plot(dat$z, (dat$p), xlab = "depth", ylab = "log(krill density)", pch = 19, col = dat$stn)
+for (i in 1:nlevels(dat$stn)) {
+  y <- exp(p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*dat$z[dat$stn == levels(dat$stn)[i]])
+  x <- dat$z[dat$stn == levels(dat$stn)[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l", col = i)
+}
+
+y <- exp(p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$z)
+x <- dat$z
+xy <- cbind(x, y)
+xy <- xy[order(xy[, 1]), ]
+points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
+title("log(krill) vs depth")
+
+
+
+#-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
+
+
+#subset data frame to get only stations with 8 or more data points
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
+colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
+d <- na.omit(d)
+d <- d[d$stn %in% sort(unique(d$stn))[which(table(d$stn) >= 8)], ]
+dat <- d[d$pa == 1, ]
+dat$stn <- as.factor(dat$stn)
+dat$stn <- as.factor(dat$stn)
+dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 8)], ]
+
+
+
+#plot of model with random slope on log scale using l.obs
+p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1| stn, data = dat, na.action = na.omit)
+summary(p.lm)
+r.squared.lme(p.lm)
+
+plot(dat$l.obs, log(dat$p), xlab = "l.obs", ylab = "log(krill density)", pch = 19, col = dat$stn)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
+x <- dat$l.obs
+xy <- cbind(x, y)
+xy <- xy[order(xy[, 1]), ]
+points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
+title("log(krill) vs l.obs")
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*exp(0.5*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l", col = i)
+}
+
+
+
+#plot of model with random slope on natural scale using l.obs
+p.lm <- lme(log(p) ~ obs, random =~ obs - 1| stn, data = dat, na.action = na.omit)
+summary(p.lm)
+r.squared.lme(p.lm)
+
+plot(dat$l.obs, (dat$p), xlab = "l.obs", ylab = "krill density", pch = 19, col = dat$stn)
+y <- exp(p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$obs)
+x <- dat$l.obs
+xy <- cbind(x, y)
+xy <- xy[order(xy[, 1]), ]
+points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
+title("log(krill) vs l.obs")
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- exp(p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*dat$obs[dat$stn == sort(unique(dat$stn))[i]])
+  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
   xy <- cbind(x, y)
   xy <- xy[order(xy[, 1]), ]
   points(xy[, 1], xy[, 2], type = "l", col = i)
@@ -164,26 +250,29 @@ for(i in 1:nlevels(dat$stn)) {
 
 
 
-colfunc <- colorRampPalette(c("darkblue", "lightblue"))
-plot(fluoro$z, log(p),  col = colfunc(10)[findInterval(as.numeric(fluoro$temp)+3, seq(2:5))], pch = 19)
-
-colPal <- rep("black", length(p))
-w <- unique(fluoro$stn[fluoro$temp > 0])
-colPal[fluoro$stn %in% w] <- "red"
-plot(fluoro$z, log(p),  col = colPal, pch = 19)
 
 
-plot(fluoro$z, log(p), col = "white")
-for (i in unique(fluoro$stn)) {
-  x <- fluoro$z[fluoro$stn == i & pa == 1]
-  y <- log(p)[fluoro$stn == i & pa == 1]
-  xy <- data.frame(x, y)
-  xy <- na.omit(xy)
-  xy <- xy[order(xy$x), ]
-  points(xy$x, xy$y, type = "l", col = i)
+#plot of model with random slope on log scale using l.obs
+p.lm <- lme(log(p) ~ (obs), random =~ obs*2 - 1 | stn, data = dat, na.action = na.omit)
+summary(p.lm)
+r.squared.lme(p.lm)
+
+plot(log(dat$obs), log(dat$p), xlab = "l.obs", ylab = "krill density", pch = 19, col = dat$stn)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$obs)
+x <- log(dat$obs)
+xy <- cbind(x, y)
+xy <- xy[order(xy[, 1]), ]
+points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
+title("log(krill) vs l.obs")
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*dat$obs[dat$stn == sort(unique(dat$stn))[i]]
+  x <- log(dat$obs)[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l", col = i)
 }
-
-
 
 
 
