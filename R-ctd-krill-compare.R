@@ -53,7 +53,7 @@ d <- na.omit(d)
 
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
 
-pa.lm <- glm(pa ~ z + temp + sal + par + oxy, dat = d, family = "binomial")
+pa.lm <- glm(pa ~ z + temp + sal, dat = d, family = "binomial")
 summary(pa.lm)
 
 #mixed model with station random effect
@@ -64,7 +64,7 @@ d$par <- scale(d$par)
 d$temp <- scale(d$temp)
 d$oxy <- scale(d$oxy)
 
-pa.lm <- glmer(pa ~ z + par + oxy + (1|stn), data = d, family = "binomial")
+pa.lm <- glmer(pa ~ z + temp + sal + (1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
 #table of false and true 0 and 1
@@ -104,7 +104,7 @@ plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", 
 lines(c(0, 1), c(0, 1), col = "red")
 dev.off()
 
-#calculate the area under the ROC curve (0.5 = bad, 1 = perfect)
+#calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
 
 
@@ -192,21 +192,20 @@ title("log(krill) vs depth")
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
 d <- na.omit(d)
-d <- d[d$stn %in% sort(unique(d$stn))[which(table(d$stn) >= 8)], ]
+d <- d[d$stn %in% sort(unique(d$stn))[which(table(d$stn) >= 10)], ]
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
-dat$stn <- as.factor(dat$stn)
-dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 8)], ]
+dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 10)], ]
 
 
 
 #plot of model with random slope on log scale using l.obs
-p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1| stn, data = dat, na.action = na.omit)
+p.lm <- lme(log(p) ~ exp(l.obs), random =~ exp(l.obs) | stn, data = dat, na.action = na.omit)
 summary(p.lm)
 r.squared.lme(p.lm)
 
 plot(dat$l.obs, log(dat$p), xlab = "l.obs", ylab = "log(krill density)", pch = 19, col = dat$stn)
-y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(dat$l.obs))
 x <- dat$l.obs
 xy <- cbind(x, y)
 xy <- xy[order(xy[, 1]), ]
@@ -215,7 +214,7 @@ title("log(krill) vs l.obs")
 
 dat$stn <- as.factor(dat$stn)
 for (i in 1:length(unique(dat$stn))) {
-  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*exp(0.5*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*exp(dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
   x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
   xy <- cbind(x, y)
   xy <- xy[order(xy[, 1]), ]
@@ -273,6 +272,96 @@ for (i in 1:length(unique(dat$stn))) {
   xy <- xy[order(xy[, 1]), ]
   points(xy[, 1], xy[, 2], type = "l", col = i)
 }
+
+
+
+#plot of model with random slope on log scale using l.obs for presentation
+p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1| stn, data = dat, na.action = na.omit)
+summary(p.lm)
+r.squared.lme(p.lm)
+
+png(file = "lobs.png", width = 1000, height = 750, res = 100)
+par(mar = c(5, 5, 1, 1))
+plot(0.5*dat$l.obs, log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
+x <- dat$l.obs
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*exp(0.5*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+dev.off()
+
+
+
+
+#subset data frame to get only stations with 8 or more data points
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
+colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
+d <- na.omit(d)
+d <- d[d$stn %in% sort(unique(d$stn))[which(table(d$stn) >= 7)], ]
+dat <- d[d$pa == 1, ]
+dat$stn <- as.factor(dat$stn)
+dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 7)], ]
+
+
+
+p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1 | stn, data = dat, na.action = na.omit)
+summary(p.lm)
+r.squared.lme(p.lm)
+
+png(file = "lobs.png", width = 1000, height = 750, res = 100)
+par(mar = c(5, 5, 1, 1))
+plot(log(dat$obs), log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
+x <- (dat$l.obs)
+
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*exp(0.5*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  x <- (dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+dev.off()
+
+
+#using gamm
+library(mgcv)
+p.lm <- gamm(log(p) ~ s(l.obs), random = list(stn =~ 1), dat = dat)
+summary(p.lm$gam)
+
+
+plot(dat$l.obs, log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$lme$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*(dat$l.obs))
+x <- dat$l.obs
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$lme$coefficients$fixed[1] + p.lm$lme$coefficients$random$stn[i, 1] + p.lm$lme$coefficients$fixed[2]*
+  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+
+
+a <- predict(p.lm, dat = dat, type="lpmatrix")
 
 
 
