@@ -74,8 +74,8 @@ table(na.omit(d)$pa, round(fitted(pa.lm)))
 vif(pa.lm)
 
 #calculate sensitivity and specificity
-sensitivity(as.factor(na.omit(d)$pa), as.factor(round(fitted(pa.lm))))
-specificity(as.factor(na.omit(d)$pa), as.factor(round(fitted(pa.lm))))
+sensitivity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
+specificity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
 
 #plot a ROC curve for the binomial glm
 roc.curve <- function(s, print = FALSE) {
