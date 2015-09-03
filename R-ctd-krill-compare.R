@@ -111,16 +111,6 @@ auc(M.ROC[1,], M.ROC[2,])
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
 
-#subset data frame to get only stations with 8 or more data points
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
-colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
-d <- na.omit(d)
-d <- d[d$stn %in% sort(unique(d$stn))[which(table(d$stn) >= 10)], ]
-dat <- d[d$pa == 1, ]
-dat$stn <- as.factor(dat$stn)
-dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 10)], ]
-
-
 
 #plot of model with random slope on log scale using l.obs
 p.lm <- lme(log(p) ~ exp(l.obs), random =~ exp(l.obs) | stn, data = dat, na.action = na.omit)
@@ -229,7 +219,6 @@ dev.off()
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
 d <- na.omit(d)
-d <- d[d$stn %in% sort(unique(d$stn))[which(table(d$stn) >= 7)], ]
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 7)], ]
@@ -287,4 +276,67 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 a <- predict(p.lm, dat = dat, type="lpmatrix")
 
 
+
+#pad to get same number of observations
+dat_full <- as.data.frame(matrix(NA, nrow = length(unique(dat$stn))*length(unique(dat$z)), ncol = ncol(dat)))
+names(dat_full) <- names(dat)
+dat_full$z <- rep(unique(dat$z), length(unique(dat$stn)))
+dat_full$stn <- sort(rep(unique(dat$stn), length(unique(dat$z))))
+for (i in 1:nrow(dat)) {
+  w <- which(dat_full$stn == dat$stn[i] & dat_full$z == dat$z[i])
+  dat_full[w, ] <- dat[i, ]
+}
+dat_full$z.fact <- as.factor(dat_full$z)
+dat_full <- dat_full[order(as.numeric(as.character(dat_full$stn))), ]
+
+
+
+p.lm <- asreml(log(p) ~ obs, random =~ obs:stn, data = dat_full, na.method.X = 'include')
+summary(p.lm)
+
+plot(dat_full$l.obs, log(dat_full$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- p.lm$coefficients$fixed[2] + p.lm$coefficients$fixed[1]*dat_full$obs2
+x <- dat_full$l.obs
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+for (i in 1:length(unique(dat_full$stn))) {
+  y <- fitted(p.lm)[dat_full$stn == sort(unique(dat_full$stn))[i]]
+  x <- dat_full$l.obs[dat_full$stn == sort(unique(dat_full$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+
+
+
+
+#calculates marginal and conditional residuals for asreml mixed model object
+#author: Lisa-Marie Harrison
+#date: 3/8/2015
+
+asreml.fit <- p.lm
+
+# Get design matrix of fixed effects from model
+Fmat <- model.matrix(eval(asreml.fit$fixed.formula)[-2], glm.spl)
+
+# Get variance of fixed effects by multiplying coefficients by design matrix
+VarF <- sum(var(as.vector(rev(asreml.fit$coefficients$fixed) %*% t(Fmat))))
+
+# Get variance of random effects by extracting variance components
+VarRand <- sum(summary(asreml.fit)$varcomp[1:2, 2])
+
+# Get residual variance
+VarResid <- summary(asreml.fit)$varcomp[3, 2]
+
+varTotal <- VarF + VarRand + VarResid
+
+#calculate marginal R-squared
+marR2 <- VarF/varTotal
+
+#calculate conditional R-squared
+condR2 <- (VarF + VarRand)/varTotal
+
+cbind(VarF, VarRand, VarResid)
 
