@@ -49,8 +49,8 @@ for (i in 1:length(unique(ctd$stn))) {
   krill_38 <- krill_38[krill_38$Sv_mean != 9999, ]
   krill_120 <- krill_120[krill_120$Sv_mean != 9999, ]
   
-  krill_38 <- krill_38[krill_38$Interval %in% c(max(krill_38$Interval) - 10, max(krill_38$Interval)), ]
-  krill_120 <- krill_120[krill_120$Interval %in% c(max(krill_38$Interval) - 10, max(krill_120$Interval)), ]
+  krill_38 <- krill_38[krill_38$Interval %in% c(max(krill_38$Interval) - 50, max(krill_38$Interval)), ]
+  krill_120 <- krill_120[krill_120$Interval %in% c(max(krill_38$Interval) - 50, max(krill_120$Interval)), ]
   
   
   if (nrow(krill_38) == 0) {
@@ -69,14 +69,14 @@ for (i in 1:length(unique(ctd$stn))) {
   sv_38 <- krill_38$Sv_mean
   sv_120 <- krill_120$Sv_mean
   sv_38[sv_38 > 500 | sv_38 < -500] <- NA
-  sv_120[sv_120 > 500 | sv_120 < -100] <- NA
+  sv_120[sv_120 > 500 | sv_120 < -90] <- NA
   
   
   sv <- 10^(sv_120/10)
-  mvbs_120 <- 10*log10(aggregate(sv, by = list(krill_38$Layer), FUN = "sum")$x/table(krill_38$Layer[1]))
+  mvbs_120 <- 10*log10(aggregate(sv, by = list(krill_38$Layer), FUN = "mean")$x)
   
   sv1_38 <- 10^(sv_38/10)
-  mvbs_38 <- 10*log10(aggregate(sv1_38, by = list(krill_38$Layer), FUN = "sum")$x/table(krill_38$Layer[1]))
+  mvbs_38 <- 10*log10(aggregate(sv1_38, by = list(krill_38$Layer), FUN = "mean")$x)
   
   sv_diff <- mvbs_120 - mvbs_38
     

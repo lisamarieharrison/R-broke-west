@@ -68,8 +68,8 @@ for (i in 1:length(unique(ctd$stn))) {
     next()
   }
   
-  krill_38 <- krill_38[krill_38$Interval %in% c((max(krill_38$Interval) - 50): max(krill_38$Interval)), ]
-  krill_120 <- krill_120[krill_120$Interval %in% c((max(krill_38$Interval) - 50): max(krill_120$Interval)), ]
+  krill_38 <- krill_38[krill_38$Interval %in% c((max(krill_38$Interval) - 100): max(krill_38$Interval)), ]
+  krill_120 <- krill_120[krill_120$Interval %in% c((max(krill_38$Interval) - 100): max(krill_120$Interval)), ]
 
   
   #remove layers of -1 
