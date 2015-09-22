@@ -5,6 +5,7 @@
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West")
 density <- read.csv("brokewest_krill_ctd.csv", header = T)
 source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-mixed-models/calc_conditional_marginal_Rsquared.R")
+source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-mixed-models/calc_asreml_conditional_marginal_Rsquared.R")
 library(car)
 library(caret)
 library(nlme)
@@ -109,83 +110,6 @@ auc(M.ROC[1,], M.ROC[2,])
 
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
-
-
-
-#plot of model with random slope on log scale using l.obs
-p.lm <- lme(log(p) ~ exp(l.obs), random =~ exp(l.obs) | stn, data = dat, na.action = na.omit)
-summary(p.lm)
-r.squared.lme(p.lm)
-
-plot(dat$l.obs, log(dat$p), xlab = "l.obs", ylab = "log(krill density)", pch = 19, col = dat$stn)
-y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(dat$l.obs))
-x <- dat$l.obs
-xy <- cbind(x, y)
-xy <- xy[order(xy[, 1]), ]
-points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
-title("log(krill) vs l.obs")
-
-dat$stn <- as.factor(dat$stn)
-for (i in 1:length(unique(dat$stn))) {
-  y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*exp(dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
-  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
-  xy <- cbind(x, y)
-  xy <- xy[order(xy[, 1]), ]
-  points(xy[, 1], xy[, 2], type = "l", col = i)
-}
-
-
-
-#plot of model with random slope on natural scale using l.obs
-p.lm <- lme(log(p) ~ obs, random =~ obs - 1| stn, data = dat, na.action = na.omit)
-summary(p.lm)
-r.squared.lme(p.lm)
-
-plot(dat$l.obs, (dat$p), xlab = "l.obs", ylab = "krill density", pch = 19, col = dat$stn)
-y <- exp(p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$obs)
-x <- dat$l.obs
-xy <- cbind(x, y)
-xy <- xy[order(xy[, 1]), ]
-points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
-title("log(krill) vs l.obs")
-
-dat$stn <- as.factor(dat$stn)
-for (i in 1:length(unique(dat$stn))) {
-  y <- exp(p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*dat$obs[dat$stn == sort(unique(dat$stn))[i]])
-  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
-  xy <- cbind(x, y)
-  xy <- xy[order(xy[, 1]), ]
-  points(xy[, 1], xy[, 2], type = "l", col = i)
-}
-
-
-
-
-
-
-
-#plot of model with random slope on log scale using l.obs
-p.lm <- lme(log(p) ~ (obs), random =~ obs*2 - 1 | stn, data = dat, na.action = na.omit)
-summary(p.lm)
-r.squared.lme(p.lm)
-
-plot(log(dat$obs), log(dat$p), xlab = "l.obs", ylab = "krill density", pch = 19, col = dat$stn)
-y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$obs)
-x <- log(dat$obs)
-xy <- cbind(x, y)
-xy <- xy[order(xy[, 1]), ]
-points(xy[, 1], xy[, 2], col = "black", type = "l", lwd = 4)
-title("log(krill) vs l.obs")
-
-dat$stn <- as.factor(dat$stn)
-for (i in 1:length(unique(dat$stn))) {
-  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*dat$obs[dat$stn == sort(unique(dat$stn))[i]]
-  x <- log(dat$obs)[dat$stn == sort(unique(dat$stn))[i]]
-  xy <- cbind(x, y)
-  xy <- xy[order(xy[, 1]), ]
-  points(xy[, 1], xy[, 2], type = "l", col = i)
-}
-
 
 
 #plot of model with random slope on log scale using l.obs for presentation
@@ -310,33 +234,5 @@ for (i in 1:length(unique(dat_full$stn))) {
 points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 
-
-
-#calculates marginal and conditional residuals for asreml mixed model object
-#author: Lisa-Marie Harrison
-#date: 3/8/2015
-
-asreml.fit <- p.lm
-
-# Get design matrix of fixed effects from model
-Fmat <- model.matrix(eval(asreml.fit$fixed.formula)[-2], glm.spl)
-
-# Get variance of fixed effects by multiplying coefficients by design matrix
-VarF <- sum(var(as.vector(rev(asreml.fit$coefficients$fixed) %*% t(Fmat))))
-
-# Get variance of random effects by extracting variance components
-VarRand <- sum(summary(asreml.fit)$varcomp[1:2, 2])
-
-# Get residual variance
-VarResid <- summary(asreml.fit)$varcomp[3, 2]
-
-varTotal <- VarF + VarRand + VarResid
-
-#calculate marginal R-squared
-marR2 <- VarF/varTotal
-
-#calculate conditional R-squared
-condR2 <- (VarF + VarRand)/varTotal
-
-cbind(VarF, VarRand, VarResid)
-
+#calculate marginal and conditional residuals for asreml mixed model object
+calcRsquared(p.lm, "obs:stn")
