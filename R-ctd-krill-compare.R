@@ -98,12 +98,10 @@ roc.curve(threshold, print = TRUE)
 ROC.curve <- Vectorize(roc.curve)
 M.ROC <- ROC.curve(seq(0, 1, by = 0.01))
 
-png(file = "roc.png", width = 1000, height = 750, res = 100)
 par(mfrow = c(1, 1), mar = c(5, 5, 1, 1))
 plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", ylab = "True Positive Rate", cex.lab = 2, cex.axis = 2)
 #title("ROC curve")
 lines(c(0, 1), c(0, 1), col = "red")
-dev.off()
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
@@ -153,7 +151,6 @@ p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1 | stn, data = 
 summary(p.lm)
 r.squared.lme(p.lm)
 
-png(file = "lobs.png", width = 1000, height = 750, res = 100)
 par(mar = c(5, 5, 1, 1))
 plot(log(dat$obs), log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
 y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
@@ -171,7 +168,6 @@ for (i in 1:length(unique(dat$stn))) {
   points(xy[, 1], xy[, 2], type = "l")
 }
 points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
-dev.off()
 
 
 #using gamm
