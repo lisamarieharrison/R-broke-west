@@ -4,8 +4,8 @@
 
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West")
 density <- read.csv("brokewest_krill_ctd.csv", header = T)
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-mixed-models/calc_conditional_marginal_Rsquared.R")
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-mixed-models/calc_asreml_conditional_marginal_Rsquared.R")
+source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_conditional_marginal_Rsquared.R")
+source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_asreml_conditional_marginal_Rsquared.R")
 library(car)
 library(caret)
 library(nlme)
@@ -13,7 +13,7 @@ library(lme4)
 library(flux)
 
 #get glm.spl
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-broke-west/R-set-up-fluoro.R")
+source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/setUpFluoro.R")
 
 #find stations where krill data is available and subset glm.spl
 stn <- unique(density$stn)
