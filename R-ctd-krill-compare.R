@@ -4,8 +4,6 @@
 
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West")
 density <- read.csv("brokewest_krill_ctd.csv", header = T)
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_conditional_marginal_Rsquared.R")
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_asreml_conditional_marginal_Rsquared.R")
 library(car)
 library(caret)
 library(nlme)
@@ -14,8 +12,14 @@ library(flux)
 
 #get glm.spl
 source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/setUpFluoro.R")
+source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_conditional_marginal_Rsquared.R")
+source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_asreml_conditional_marginal_Rsquared.R")
 
 #find stations where krill data is available and subset glm.spl
+dat <- read.csv(file = "C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/Data/procCTD.csv", header= T)
+names(dat) <- c("survey", "stn", "lat", "long", "start.time", "end.time", "depth", "transmittance", "cond", "temp", "sal", "par", "oxygen", "fluoro", "x2", "ice", "wm")
+
+glm.spl <- setUpFluoro(dat)
 stn <- unique(density$stn)
 fluoro <- glm.spl[glm.spl$stn %in% stn, ]
 
@@ -31,7 +35,6 @@ length(unique(fluoro$stn))
 
 #plot log krill against environmental variables
 plot(cbind(fluoro[c(1:2, 6:9)], log(p)))
-
 
 #plot krill presence/absence against environmental variables
 pa <- rep(NA, length(p))
@@ -59,11 +62,11 @@ summary(pa.lm)
 
 #mixed model with station random effect
 
-d$sal <- scale(d$sal)
-d$z <- scale(d$z)
-d$par <- scale(d$par)
+d$sal  <- scale(d$sal)
+d$z    <- scale(d$z)
+d$par  <- scale(d$par)
 d$temp <- scale(d$temp)
-d$oxy <- scale(d$oxy)
+d$oxy  <- scale(d$oxy)
 
 pa.lm <- glmer(pa ~ z + temp + sal + (1|stn), data = d, family = "binomial")
 summary(pa.lm)
@@ -109,34 +112,6 @@ auc(M.ROC[1,], M.ROC[2,])
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
-
-#plot of model with random slope on log scale using l.obs for presentation
-p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1| stn, data = dat, na.action = na.omit)
-summary(p.lm)
-r.squared.lme(p.lm)
-
-png(file = "lobs.png", width = 1000, height = 750, res = 100)
-par(mar = c(5, 5, 1, 1))
-plot(0.5*dat$l.obs, log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
-y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
-x <- dat$l.obs
-xy <- cbind(x, y)
-xy1 <- xy[order(xy[, 1]), ]
-
-dat$stn <- as.factor(dat$stn)
-for (i in 1:length(unique(dat$stn))) {
-  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*exp(0.5*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
-  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
-  xy <- cbind(x, y)
-  xy <- xy[order(xy[, 1]), ]
-  points(xy[, 1], xy[, 2], type = "l")
-}
-points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
-dev.off()
-
-
-
-
 #subset data frame to get only stations with 8 or more data points
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
@@ -144,8 +119,6 @@ d <- na.omit(d)
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 7)], ]
-
-
 
 p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1 | stn, data = dat, na.action = na.omit)
 summary(p.lm)
