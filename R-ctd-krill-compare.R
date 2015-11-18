@@ -9,6 +9,7 @@ library(caret)
 library(nlme)
 library(lme4)
 library(flux)
+library(itsadug)
 
 #get glm.spl
 source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/setUpFluoro.R")
@@ -112,29 +113,30 @@ auc(M.ROC[1,], M.ROC[2,])
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
-#subset data frame to get only stations with 8 or more data points
+#subset data frame to get only stations with 5 or more data points
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
 d <- na.omit(d)
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
-dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 7)], ]
+dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
 
-p.lm <- lme(log(p) ~ exp(0.5*l.obs), random =~ exp(0.5*l.obs) - 1 | stn, data = dat, na.action = na.omit)
+dat$pwr <- 2^dat$l.obs
+
+p.lm <- lme(log(p) ~ pwr, random =~ pwr -1 | stn, data = dat, na.action = na.omit)
 summary(p.lm)
 r.squared.lme(p.lm)
 
 par(mar = c(5, 5, 1, 1))
 plot(log(dat$obs), log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
-y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*exp(0.5*dat$l.obs))
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$pwr)
 x <- (dat$l.obs)
-
 xy <- cbind(x, y)
 xy1 <- xy[order(xy[, 1]), ]
 
 dat$stn <- as.factor(dat$stn)
 for (i in 1:length(unique(dat$stn))) {
-  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*exp(0.5*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  y <- p.lm$coefficients$fixed[1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 1])*dat$pwr[dat$stn == sort(unique(dat$stn))[i]]
   x <- (dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
   xy <- cbind(x, y)
   xy <- xy[order(xy[, 1]), ]
@@ -145,29 +147,30 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 #using gamm
 library(mgcv)
-p.lm <- gamm(log(p) ~ s(l.obs), random = list(stn =~ 1), dat = dat)
-summary(p.lm$gam)
+p.lm <- gam(log(p) ~ s(l.obs) + s(stn, bs = "re"), dat = dat, gamma = 2)
+p.lm <- gamm(log(p) ~ s(l.obs), random = list(stn =~ -1 + l.obs), dat = dat, control = list(niter = 100000))
+
+summary(p.lm)
+
+plot(p.lm)
+
+pd <- plot(p.lm$gam)
 
 
-plot(dat$l.obs, log(dat$p), xlab = "log(phytoplankton density)", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
-y <- (p.lm$lme$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*(dat$l.obs))
-x <- dat$l.obs
-xy <- cbind(x, y)
-xy1 <- xy[order(xy[, 1]), ]
+asreml.fit <- asreml(log(p) ~ l.obs, random=~ spl(l.obs) + stn, data = dat)
+summary(asreml.fit)
 
-dat$stn <- as.factor(dat$stn)
-for (i in 1:length(unique(dat$stn))) {
-  y <- p.lm$lme$coefficients$fixed[1] + p.lm$lme$coefficients$random$stn[i, 1] + p.lm$lme$coefficients$fixed[2]*
-  x <- dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
-  xy <- cbind(x, y)
-  xy <- xy[order(xy[, 1]), ]
-  points(xy[, 1], xy[, 2], type = "l")
+plot_smooth(p.lm, view = "l.obs", cond = list(stn = unique(dat$stn)[1]), se = FALSE)
+for (i in sort(unique(dat$stn))) {
+  plot_smooth(p.lm, view = "l.obs", cond = list(stn = i), se = FALSE, add = TRUE)
 }
-points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 
-a <- predict(p.lm, dat = dat, type="lpmatrix")
-
+plot(log(dat$obs), log(dat$p), pch = 19, col = "grey")
+points(pd[[1]]$x, pd[[1]]$fit, type = "l")
+for (i in sort(unique(dat$stn))) {
+  points(pd[[1]]$x, (pd[[1]]$fit-0.471522814)*p.lm$lme$coefficients$random$stn[grep(rownames(p.lm$lme$coefficients$random$stn), pattern = i), 2] + p.lm$lme$coefficients$random$stn[grep(rownames(p.lm$lme$coefficients$random$stn), pattern = i), 1], type = "l")
+}
 
 
 #pad to get same number of observations
