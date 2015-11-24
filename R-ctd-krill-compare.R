@@ -73,7 +73,7 @@ colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn")
 d <- na.omit(d)
 
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
-
+ 
 pa.lm <- glm(pa ~ z + temp + sal, dat = d, family = "binomial")
 summary(pa.lm)
 
