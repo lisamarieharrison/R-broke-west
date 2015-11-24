@@ -15,11 +15,14 @@ library(nlme)
 library(lme4)
 library(flux)
 library(itsadug)
+library(mgcv)
 
 #source required functions
 function_list <- c("setUpFluoro.R",
                    "calc_conditional_marginal_Rsquared.R",
-                   "calc_asreml_conditional_marginal_Rsquared.R")
+                   "calc_asreml_conditional_marginal_Rsquared.R",
+                   "rocCurve.R",
+                   "krillPresenceAbsence")
 
 for (f in function_list) {
   source(paste("R code/R-functions-southern-ocean/", f, sep = ""))
@@ -34,22 +37,26 @@ stn <- unique(density$stn)
 fluoro <- glm.spl[glm.spl$stn %in% stn, ]
 
 #transform krill to be on the same scale as ctd data
-p <- rep(NA, nrow(fluoro))
-for (i in 1:nrow(density)) {
-  w <- which(fluoro$stn == density$stn[i] & (abs(fluoro$z - density$depth[i]) <= 1))[1]
-  p[w] <- density$p[i]
+
+transformKrill <- function (krill, fluoro) {
+  
+  p <- rep(NA, nrow(fluoro))
+  for (i in 1:nrow(krill)) {
+    w <- which(fluoro$stn == krill$stn[i] & (abs(fluoro$z - krill$depth[i]) <= 1))[1]
+    p[w] <- krill$p[i]
+  }
+  return(p)
+  
 }
 
-#number of stations included
-length(unique(fluoro$stn))
+p <- transformKrill(density, fluoro)
 
 #plot log krill against environmental variables
 plot(cbind(fluoro[c(1:2, 6:9)], log(p)))
 
 #plot krill presence/absence against environmental variables
-pa <- rep(NA, length(p))
-pa[p > 0] <- 1
-pa[p == 0] <- 0
+pa <- krillPresenceAbsence(p)
+
 plot(cbind(fluoro[c(1:2, 6:9)], pa))
 
 #boxplots for presence/absence
@@ -92,28 +99,12 @@ sensitivity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive 
 specificity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
 
 #plot a ROC curve for the binomial glm
-roc.curve <- function(s, print = FALSE) {
-  Ps <- (S > s)*1
-  FP <- sum((Ps == 1)*(Y == 0))/sum(Y == 0)
-  TP <- sum((Ps == 1)*(Y == 1))/sum(Y == 1)
-  if (print) {
-    print(table(Observed = Y, Predicted = Ps))
-  }
-  vect <- c(FP, TP)
-  names(vect) <- c("FPR", "TPR")
-  return(vect)
-}
-
-S <- predict(pa.lm, type = "response")
-threshold <- 0.5
-Y <- na.omit(d)$pa
-roc.curve(threshold, print = TRUE)
-ROC.curve <- Vectorize(roc.curve)
-M.ROC <- ROC.curve(seq(0, 1, by = 0.01))
+ROC.curve <- Vectorize(rocCurve(model = pa.lm, s = 0.5, data = pa, print = TRUE))
+M.ROC     <- ROC.curve(seq(0, 1, by = 0.01))
 
 par(mfrow = c(1, 1), mar = c(5, 5, 1, 1))
 plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", ylab = "True Positive Rate", cex.lab = 2, cex.axis = 2)
-#title("ROC curve")
+title("ROC curve")
 lines(c(0, 1), c(0, 1), col = "red")
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
@@ -155,25 +146,17 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 
 #using gamm
-library(mgcv)
 p.lm <- gam(log(p) ~ s(l.obs) + s(stn, bs = "re"), dat = dat, gamma = 2)
-p.lm <- gamm(log(p) ~ s(l.obs), random = list(stn =~ -1 + l.obs), dat = dat, control = list(niter = 100000))
-
 summary(p.lm)
-
 plot(p.lm)
-
-pd <- plot(p.lm$gam)
-
-
-asreml.fit <- asreml(log(p) ~ l.obs, random=~ spl(l.obs) + stn, data = dat)
-summary(asreml.fit)
 
 plot_smooth(p.lm, view = "l.obs", cond = list(stn = unique(dat$stn)[1]), se = FALSE)
 for (i in sort(unique(dat$stn))) {
   plot_smooth(p.lm, view = "l.obs", cond = list(stn = i), se = FALSE, add = TRUE)
 }
 
+p.lm <- gamm(log(p) ~ s(l.obs), random = list(stn =~ -1 + l.obs), dat = dat, control = list(niter = 100000))
+pd <- plot(p.lm$gam)
 
 plot(log(dat$obs), log(dat$p), pch = 19, col = "grey")
 points(pd[[1]]$x, pd[[1]]$fit, type = "l")
@@ -182,7 +165,7 @@ for (i in sort(unique(dat$stn))) {
 }
 
 
-#pad to get same number of observations
+#using asreml
 dat_full <- as.data.frame(matrix(NA, nrow = length(unique(dat$stn))*length(unique(dat$z)), ncol = ncol(dat)))
 names(dat_full) <- names(dat)
 dat_full$z <- rep(unique(dat$z), length(unique(dat$stn)))
@@ -214,6 +197,4 @@ for (i in 1:length(unique(dat_full$stn))) {
 }
 points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
-
-#calculate marginal and conditional residuals for asreml mixed model object
 calcRsquared(p.lm, "obs:stn")
