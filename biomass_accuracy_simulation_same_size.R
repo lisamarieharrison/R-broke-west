@@ -1,3 +1,7 @@
+#simulation for krill biomass estimation
+#author: Lisa-Marie Harrison
+
+
 #assume all krill in the survey slice are perfectly detected
 
 calcKrillBiomass <- function(survey_area_width, survey_area_length, 
