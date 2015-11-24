@@ -1,3 +1,6 @@
+#generates fake krill data for simulation studies
+#author: Lisa-Marie Harrison
+
 edsu <- matrix(0, ncol = (survey_width/detected_width), nrow = (survey_length/edsu_width))
 
 #add random krill to cells
