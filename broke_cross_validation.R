@@ -4,13 +4,25 @@
 #author: Lisa-Marie Harrison
 #date: 11/11/2014
 
-setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/Data")
-dat <- read.csv(file = "procCTD.csv", header= T)
+if (Sys.info()[4] == "SCI-6246") {
+  setwd(dir = "C:/Users/43439535/Documents/Lisa/phd/Mixed models")
+} else {
+  setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/Mixed models")
+}
+
+dat <- read.csv(file = "Data/procCTD.csv", header= T)
 library(asreml)
 library(nlme)
 library(lattice)
 
 names(dat) <- c("survey", "stn", "lat", "long", "start.time", "end.time", "depth", "transmittance", "cond", "temp", "sal", "par", "oxygen", "fluoro", "x2", "ice", "wm")
+
+#source required functions
+function_list <- c("distFromStn1.R")
+
+for (f in function_list) {
+  source(paste("R code/R-functions-southern-ocean/", f, sep = ""))
+}
 
 #remove null values
 dat$sal[dat$sal == -9] <- NA
@@ -50,40 +62,10 @@ for (s in 1:6) {
   lat  <- dat.cut$lat[duplicated(dat.cut$stn) == FALSE]
   long <- dat.cut$long[duplicated(dat.cut$stn) == FALSE]
   
-  #function to convert degrees to radians
-  deg2rad <- function(deg) {
-    return(deg*pi/180)
-  }
-  
-  #Calculates the distance between two points with radian latitude/longitude using Haversine formula (hf)
-  gcd.hf <- function(lat1, long1, lat2, long2) {
-    R <- 6371 # Earth mean radius [km]
-    delta.long <- (long2 - long1)
-    delta.lat <- (lat2 - lat1)
-    a <- sin(delta.lat/2)^2 + cos(lat1) * cos(lat2) * sin(delta.long/2)^2
-    c <- 2 * asin(min(1,sqrt(a)))
-    d = R * c
-    return(d) # Distance in km
-  }
-  
-  dist_x <- matrix(0, ncol = n.station, nrow = n.station)
-  for (i in 1:n.station) {
-    for (k in 1:n.station) {
-      dist_x[i, k] <- gcd.hf(deg2rad(lat[i]), deg2rad(long[i]), deg2rad(lat[k]), deg2rad(long[i]))/100
-    }
-  }
-  
-  dist_y <- matrix(0, ncol = n.station, nrow = n.station)
-  for (i in 1:n.station) {
-    for (k in 1:n.station) {
-      dist_y[i, k] <- gcd.hf(deg2rad(lat[i]), deg2rad(long[i]), deg2rad(lat[i]), deg2rad(long[k]))/100
-    }
-  }
-  
   #get distance of each station from station 1 in x and y directions
-  x <- dist_x[1, ]
-  y <- dist_y[1, ]
-  
+  distance <- distFromStn1(lat, long)
+  x <- distance$x
+  y <- distance$y
   
   #dat.cuta frame
   glm.spl <- data.frame(dat.cut$l.fluoro, dat.cut$depth, as.factor(dat.cut$stn), rep(x, 1, each = length(unique(dat.cut$depth))), rep(y, 1, each = length(unique(dat.cut$depth))), dat.cut$temp, dat.cut$par, dat.cut$sal, dat.cut$oxygen, dat.cut$ice, as.factor(dat.cut$wm))
@@ -94,15 +76,9 @@ for (s in 1:6) {
   glm.spl <- glm.spl[order(glm.spl$z, glm.spl$x, glm.spl$y), ] #sort by order of rcov structure
   glm.spl$l.obs[glm.spl$l.obs == -Inf] <- NA
   
-  #centre and scale covariates to mean = 0 and sd = 1
+  #centre and scale [temp, par, sal, oxy, ice] to mean = 0 and sd = 1
   #this is required if using na.method = "include" since this sets the missing values to 0
-  glm.spl$temp <- scale(glm.spl$temp)
-  glm.spl$par  <- scale(glm.spl$par)
-  glm.spl$sal  <- scale(glm.spl$sal)
-  glm.spl$oxy  <- scale(glm.spl$oxy)
-  glm.spl$ice  <- scale(glm.spl$ice)
-  glm.spl$oxy  <- scale(glm.spl$oxy)
-  
+  glm.spl <- cbind(glm.spl[, c(1:5, 11:14)], apply(glm.spl[, 6:10], 2, scale))
   
   #------------------------------- FIT ASREML MODELS -----------------------------------#
   
