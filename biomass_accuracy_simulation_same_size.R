@@ -1,4 +1,4 @@
-#simulation for krill biomass estimation
+#function for simulation for krill biomass estimation
 #author: Lisa-Marie Harrison
 
 
