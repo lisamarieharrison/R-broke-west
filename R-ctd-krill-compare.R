@@ -2,8 +2,13 @@
 #author: Lisa-Marie Harrison
 #date: 24/08/2015
 
-setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/BROKE-West")
-density <- read.csv("brokewest_krill_ctd.csv", header = T)
+if (Sys.info()[4] == "SCI-6246") {
+  setwd(dir = "C:/Users/43439535/Documents/Lisa/phd/Mixed models")
+} else {
+  setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/Mixed models")
+}
+
+density <- read.csv("Data/brokewest_krill_ctd.csv", header = T)
 library(car)
 library(caret)
 library(nlme)
@@ -11,13 +16,17 @@ library(lme4)
 library(flux)
 library(itsadug)
 
-#get glm.spl
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/setUpFluoro.R")
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_conditional_marginal_Rsquared.R")
-source("C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/R code/R-functions-southern-ocean/calc_asreml_conditional_marginal_Rsquared.R")
+#source required functions
+function_list <- c("setUpFluoro.R",
+                   "calc_conditional_marginal_Rsquared.R",
+                   "calc_asreml_conditional_marginal_Rsquared.R")
+
+for (f in function_list) {
+  source(paste("R code/R-functions-southern-ocean/", f, sep = ""))
+}
 
 #find stations where krill data is available and subset glm.spl
-dat <- read.csv(file = "C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/Data/procCTD.csv", header= T)
+dat <- read.csv(file = "Data/procCTD.csv", header= T)
 names(dat) <- c("survey", "stn", "lat", "long", "start.time", "end.time", "depth", "transmittance", "cond", "temp", "sal", "par", "oxygen", "fluoro", "x2", "ice", "wm")
 
 glm.spl <- setUpFluoro(dat)
