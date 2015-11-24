@@ -97,11 +97,8 @@ for (s in 1:6) {
   extra.stn <- setdiff(2:120, runs[s][[1]])
   extra.dat <- dat[dat$stn %in% extra.stn, ]
   
-  
-  extra.dat$temp <- scale(extra.dat$temp)
-  extra.dat$ice <- scale(extra.dat$ice)
-  extra.dat$par <- scale(extra.dat$par)
-  
+  #scale [temp, sal, par and ice]
+  extra.dat <- cbind(extra.dat[, c(1:9, 14:18)], apply(extra.dat[, 10:13], 2, scale))
   
   pval <- 0
   se   <- 0
