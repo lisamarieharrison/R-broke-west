@@ -1,3 +1,6 @@
+#gets the adcp current at each BROKE-West station
+#author: Lisa-Marie Harrison
+
 setwd(dir = "C:/Users/Lisa/Documents/phd/southern ocean/Mixed models/Data/")
 adcp <- read.csv("adcp_data.csv", header = T)
 dat.cut <- read.csv("rstnCTD.csv", header= T)
