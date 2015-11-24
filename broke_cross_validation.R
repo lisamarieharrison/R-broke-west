@@ -35,7 +35,7 @@ dat$l.fluoro <- log(dat$fluoro)
 dat$l.fluoro[is.nan(dat$l.fluoro)] <- NA
 
 #plot latitude and longitude of each station
-plot(dat$long[seq(1, nrow(dat), 125)], dat$lat[seq(1, nrow(dat), 125)], col = "white")
+plot(dat$long[seq(1, nrow(dat), 125)], dat$lat[seq(1, nrow(dat), 125)], col = "white", xlab = "Longitude", ylab = "Latitude")
 text(dat$long[seq(1, nrow(dat), 125)], dat$lat[seq(1, nrow(dat), 125)], dat$stn[seq(1, nrow(dat), 125)])
 
 #get included stations for each run (dropping one arm at a time)
@@ -54,7 +54,7 @@ se_run <- list()
 #-------------run cross-validation, dropping one arm at a time ----------------#
 
 for (s in 1:6) {
-  
+   
   dat.cut <- dat[dat$stn %in% runs[s][[1]], ]
   
   #get latitude and longitude for each station
@@ -104,7 +104,7 @@ for (s in 1:6) {
   
   
   pval <- 0
-  se <- 0
+  se   <- 0
   for(i in 1:nrow(extra.dat)) {
     
     capture.output({
