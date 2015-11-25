@@ -22,7 +22,7 @@ function_list <- c("setUpFluoro.R",
                    "calc_conditional_marginal_Rsquared.R",
                    "calc_asreml_conditional_marginal_Rsquared.R",
                    "rocCurve.R",
-                   "krillPresenceAbsence")
+                   "krillPresenceAbsence.R")
 
 for (f in function_list) {
   source(paste("R code/R-functions-southern-ocean/", f, sep = ""))
@@ -99,8 +99,7 @@ sensitivity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive 
 specificity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
 
 #plot a ROC curve for the binomial glm
-ROC.curve <- Vectorize(rocCurve(model = pa.lm, s = 0.5, data = pa, print = TRUE))
-M.ROC     <- ROC.curve(seq(0, 1, by = 0.01))
+M.ROC <- rocCurve(model = pa.lm, threshold = 0.5, data = pa, print = TRUE)
 
 par(mfrow = c(1, 1), mar = c(5, 5, 1, 1))
 plot(M.ROC[1, ], M.ROC[2, ], lwd = 2, type = "l", xlab = "False Positive Rate", ylab = "True Positive Rate", cex.lab = 2, cex.axis = 2)
