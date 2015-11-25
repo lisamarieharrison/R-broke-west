@@ -78,18 +78,15 @@ d <- na.omit(d)
 pa.lm <- glm(pa ~ z + temp + sal, dat = d, family = "binomial")
 summary(pa.lm)
 
+#calculate variance inflation factors (<5 = good)
+vif(pa.lm)
+
 #scale or model doesn't converge
 d <- cbind(d[, c(1, 7:8)], apply(d[, 2:6], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal + (1|stn), data = d, family = "binomial")
 summary(pa.lm)
-
-#table of false and true 0 and 1
-table(na.omit(d)$pa, round(fitted(pa.lm)))
-
-#calculate variance inflation factors (<5 = good)
-vif(pa.lm)
 
 #calculate sensitivity and specificity
 sensitivity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
@@ -105,7 +102,6 @@ lines(c(0, 1), c(0, 1), col = "red")
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
-
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
