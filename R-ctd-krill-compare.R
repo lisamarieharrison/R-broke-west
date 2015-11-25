@@ -74,17 +74,14 @@ d <- na.omit(d)
 
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
  
+#glm
 pa.lm <- glm(pa ~ z + temp + sal, dat = d, family = "binomial")
 summary(pa.lm)
 
+#scale or model doesn't converge
+d <- cbind(d[, c(1, 7:8)], apply(d[, 2:6], 2, scale))
+
 #mixed model with station random effect
-
-d$sal  <- scale(d$sal)
-d$z    <- scale(d$z)
-d$par  <- scale(d$par)
-d$temp <- scale(d$temp)
-d$oxy  <- scale(d$oxy)
-
 pa.lm <- glmer(pa ~ z + temp + sal + (1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
