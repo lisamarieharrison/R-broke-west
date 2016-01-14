@@ -111,7 +111,7 @@ colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "o
 d <- na.omit(d)
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
-dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
+dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 2)], ]
 
 dat$pwr <- 2^dat$l.obs
 
@@ -190,3 +190,78 @@ for (i in 1:length(unique(dat_full$stn))) {
 points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 calcRsquared(p.lm, "obs:stn")
+
+#oxygen with linear relationship
+
+p.lm <- lme(log(p) ~ oxy, random =~ 1 + oxy | stn, data = dat, na.action = na.omit, control = list(opt='optim'))
+summary(p.lm)
+r.squared.lme(p.lm)
+
+
+par(mar = c(5, 5, 1, 1))
+plot(dat$oxy, log(dat$p), xlab = "oxygen", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$oxy)
+x <- (dat$oxy)
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*dat$oxy[dat$stn == sort(unique(dat$stn))[i]]
+  x <- (dat$oxy)[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+
+
+#fluoro with linear relationship
+
+p.lm <- lme(log(p) ~ l.obs, random =~ 1 + l.obs | stn, data = dat, na.action = na.omit, control = list(opt='optim'))
+summary(p.lm)
+r.squared.lme(p.lm)
+
+
+par(mar = c(5, 5, 1, 1))
+plot(dat$l.obs, log(dat$p), xlab = "l.fluoro", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$l.obs)
+x <- (dat$l.obs)
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*dat$l.obs[dat$stn == sort(unique(dat$stn))[i]]
+  x <- (dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+
+
+#fluoro and oxy with linear relationship
+
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + l.obs + oxy| stn, data = dat, na.action = na.omit, 
+            control = list(opt='optim'), weights = varExp(form = ~l.obs))
+summary(p.lm)
+r.squared.lme(p.lm)
+
+y <- NULL
+for (i in 1:length(unique(dat$stn))) {
+  y <- c(y, p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] 
+         + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*dat$l.obs[dat$stn == sort(unique(dat$stn))[i]] 
+         + (p.lm$coefficients$fixed[3] + p.lm$coefficients$random$stn[i, 3])*dat$oxy[dat$stn == sort(unique(dat$stn))[i]] 
+         + (p.lm$coefficients$fixed[4])*(dat$oxy*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]])
+}
+
+#plot residuals against fitted and covariates
+par(mfrow = c(1, 4))
+plot(fitted(p.lm), resid(p.lm, type = "normalized"))
+plot(dat$l.obs, resid(p.lm, type = "normalized"))
+plot(dat$oxy, resid(p.lm, type = "normalized"))
+plot(log(dat$p), y, main = "observed vs fitted")
+
+#3d scatter plot of residuals against covariates
+scatter3d(dat$l.obs, resid(p.lm, type = "normalized"), dat$oxy)
