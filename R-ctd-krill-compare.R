@@ -241,10 +241,10 @@ for (i in 1:length(unique(dat$stn))) {
 points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 
-#fluoro and oxy with linear relationship
+#fluoro and oxy with linear relationship and interaction term
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + l.obs + oxy| stn, data = dat, na.action = na.omit, 
-            control = list(opt='optim'), weights = varExp(form = ~l.obs))
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + l.obs + oxy | stn, data = dat, na.action = na.omit, 
+            control = list(opt='optim'), weights = varExp(form = ~l.obs + oxy))
 summary(p.lm)
 r.squared.lme(p.lm)
 
@@ -265,3 +265,6 @@ plot(log(dat$p), y, main = "observed vs fitted")
 
 #3d scatter plot of residuals against covariates
 scatter3d(dat$l.obs, resid(p.lm, type = "normalized"), dat$oxy)
+
+
+
