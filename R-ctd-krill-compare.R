@@ -16,6 +16,7 @@ library(lme4)
 library(flux)
 library(itsadug)
 library(mgcv)
+library(AICcmodavg)
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -111,7 +112,7 @@ colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "o
 d <- na.omit(d)
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
-dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 2)], ]
+dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
 
 dat$pwr <- 2^dat$l.obs
 
@@ -241,30 +242,44 @@ for (i in 1:length(unique(dat$stn))) {
 points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 
-#fluoro and oxy with linear relationship and interaction term
+#--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + l.obs + oxy | stn, data = dat, na.action = na.omit, 
-            control = list(opt='optim'), weights = varExp(form = ~l.obs + oxy))
+
+p.lm <- lme(log(p) ~ l.obs  * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
+            control = list(opt='optim'), weights = varExp(form =~ l.obs))
 summary(p.lm)
 r.squared.lme(p.lm)
 
-y <- NULL
-for (i in 1:length(unique(dat$stn))) {
-  y <- c(y, p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] 
-         + (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 2])*dat$l.obs[dat$stn == sort(unique(dat$stn))[i]] 
-         + (p.lm$coefficients$fixed[3] + p.lm$coefficients$random$stn[i, 3])*dat$oxy[dat$stn == sort(unique(dat$stn))[i]] 
-         + (p.lm$coefficients$fixed[4])*(dat$oxy*dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]])
-}
+#extract fitted including only fixed effects
+y <- p.lm$fitted[, 1]
 
 #plot residuals against fitted and covariates
-par(mfrow = c(1, 4))
+par(mfrow = c(1, 5))
 plot(fitted(p.lm), resid(p.lm, type = "normalized"))
 plot(dat$l.obs, resid(p.lm, type = "normalized"))
 plot(dat$oxy, resid(p.lm, type = "normalized"))
-plot(log(dat$p), y, main = "observed vs fitted")
+plot(log(dat$p), y, main = "observed vs fitted with only fixed effects")
+plot(log(dat$p), fitted(p.lm), main = "observed vs fitted")
 
 #3d scatter plot of residuals against covariates
 scatter3d(dat$l.obs, resid(p.lm, type = "normalized"), dat$oxy)
 
+#cross validation
+
+pred <- NULL
+pred_se <- NULL
+truth <- NULL
+for (i in unique(dat$stn)) {
+  
+  p.lm <- lme(log(p) ~ l.obs  * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
+              control = list(opt='optim'), weights = varExp(form =~ l.obs))
+  new_predictions <- predictSE.lme(p.lm, newdata = dat[dat$stn == i, ], na.action = na.omit)
+  pred <- c(pred, new_predictions$fit)
+  pred_se <- c(pred_se, new_predictions$se.fit)
+  truth <- c(truth, log(dat$p[dat$stn == i]))
+  
+}
+
+rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean square error
 
 
