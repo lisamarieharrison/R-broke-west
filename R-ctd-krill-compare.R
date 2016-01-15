@@ -127,6 +127,9 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 #--------------------- simulating random effects for cross validation ------------------------#
 
+#Need to add random effect back in. Can't leave it out because data transformation in binomial glm will skew results
+#Using example from Simon Wotherspoon
+
 ilogit <- function(x) 1/(1+exp(-x))
 
 truth <- NULL
@@ -136,13 +139,14 @@ for (i in unique(d$stn)) {
   pa.lm <- glmer(pa ~ z + temp + sal + par - 1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
   stn_sd <- unlist(lapply(VarCorr(pa.lm), function(m) sqrt(diag(m))))
   fixed_effect <- rowSums(sweep(cbind(d$z[d$stn == i], d$temp[d$stn == i], d$sal[d$stn == i], d$par[d$stn == i]),MARGIN=2,fixef(pa.lm),`*`))
-  
+
+  #resample to add in station random effect using extracted random effect sd
   pred_sample <- NULL
   for (j in 1:1000) {
     pred_sample <- cbind(pred_sample, ilogit(fixed_effect + rnorm(1, mean = 0, sd = stn_sd)))
   }
   
-  pred <- c(pred, rowMeans(pred_sample))
+  pred <- c(pred, rowMeans(pred_sample)) #use average of resampled predictions
   truth <- c(truth, d$pa[d$stn == i])
   
 }
@@ -153,6 +157,28 @@ table(pred, truth)
 
 sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
 specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
+
+
+#------------------------ cross validation drop 1 station without random effect -------------------------------#
+
+truth <- NULL
+pred  <- NULL
+for (i in unique(d$stn)) {
+  
+  pa.lm <- glm(pa ~ z + temp + sal + par - 1, data = d[d$stn != i, ], family = "binomial")
+  pred <- c(pred, predict(pa.lm, newdata = d[d$stn == i, ], allow.new.levels = T, type = "response"))
+  truth <- c(truth, d$pa[d$stn == i])
+  
+}
+
+pred <- round(pred)
+
+table(pred, truth)
+
+sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
+specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
+
+
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
@@ -362,9 +388,9 @@ for (i in unique(dat$stn)) {
   p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.exclude, 
               control = list(opt='optim'), weights = varExp(form =~ oxy))
   new_predictions <- predictSE.lme(p.lm, newdata = dat[dat$stn == i, ], na.action = na.omit)
-  pred <- c(pred, new_predictions$fit)
+  pred <- c(pred, exp(new_predictions$fit))
   pred_se <- c(pred_se, new_predictions$se.fit)
-  truth <- c(truth, log(dat$p[dat$stn == i]))
+  truth <- c(truth, dat$p[dat$stn == i])
   
 }
 
@@ -372,7 +398,7 @@ rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean
 
 rmse/(max(truth) - min(truth)) #rmse % of true range
 
-plot(truth, pred)
+plot(log(truth), log(pred))
 
 
 #----------------------------- cross validation drop 1 point --------------------------#
@@ -394,4 +420,50 @@ rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean
 rmse/(max(truth) - min(truth)) #rmse % of true range
 
 plot(truth, pred)
+
+
+#------------------------ cross validation drop 1 station with simulated random effects --------------------------#
+
+pred <- NULL
+truth <- NULL
+for (i in unique(dat$stn)) {
+  
+  p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.exclude, 
+              control = list(opt='optim'), weights = varExp(form =~ oxy))
+  
+  #resample using extracted random effect sds to simulate random effects
+  #manually create predictions
+  total <- NULL
+  for (j in 1:1000) {
+    
+    #intercept
+    intercept <- p.lm$coefficients$fixed[1] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[1, 2]))
+    
+    #oxy
+    oxygen <- (p.lm$coefficients$fixed[3] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[2, 2])))*dat$oxy[dat$stn == i]
+    
+    #obs
+    obs <- (p.lm$coefficients$fixed[2] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[3, 2])))*dat$obs[dat$stn == i]
+    
+    #interaction
+    interaction <- p.lm$coefficients$fixed[4]*(dat$oxy*dat$obs)[dat$stn == i]
+    
+    combined <- exp(intercept + oxygen + obs + interaction)
+    
+    combined[combined > 500] <- NA #catch unreasonably large values so they don't skew resample estimates
+    
+    total <- cbind(total, combined)
+    
+  }
+  
+  pred  <- c(pred, rowMeans(total, na.rm = TRUE))
+  truth <- c(truth, dat$p[dat$stn == i])
+  
+}
+
+rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean square error
+
+rmse/(max(truth) - min(truth)) #rmse % of true range
+
+plot(log(truth), log(pred))
 
