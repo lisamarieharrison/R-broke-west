@@ -69,24 +69,24 @@ boxplot(fluoro$par ~ pa, main = "PAR")
 boxplot(fluoro$temp ~ pa, main = "temp")
 boxplot(fluoro$l.obs ~ pa, main = "l.obs")
 
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn))
-colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn")
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
+colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
 
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
  
 #glm
-pa.lm <- glm(pa ~ z + temp + sal, dat = d, family = "binomial")
+pa.lm <- glm(pa ~ z + temp + sal + par, dat = d, family = "binomial")
 summary(pa.lm)
 
 #calculate variance inflation factors (<5 = good)
 vif(pa.lm)
 
 #scale or model doesn't converge
-d <- cbind(d[, c(1, 7:8)], apply(d[, 2:6], 2, scale))
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9)], 2, scale))
 
 #mixed model with station random effect
-pa.lm <- glmer(pa ~ z + temp + sal + (1|stn), data = d, family = "binomial")
+pa.lm <- glmer(pa ~ z + temp + sal + par -1 +(1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
 #calculate sensitivity and specificity
@@ -103,6 +103,56 @@ lines(c(0, 1), c(0, 1), col = "red")
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
+
+
+#------------------------ cross validation drop 1 station ---------------------------------#
+
+truth <- NULL
+pred  <- NULL
+for (i in unique(d$stn)) {
+  
+  pa.lm <- glmer(pa ~ z + temp + sal + par - 1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
+  pred <- c(pred, predict(pa.lm, newdata = d[d$stn == i, ], allow.new.levels = T, type = "response"))
+  truth <- c(truth, d$pa[d$stn == i])
+  
+}
+
+pred <- round(pred)
+
+table(pred, truth)
+
+sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
+specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
+
+
+#--------------------- simulating random effects for cross validation ------------------------#
+
+ilogit <- function(x) 1/(1+exp(-x))
+
+truth <- NULL
+pred  <- NULL
+for (i in unique(d$stn)) {
+  
+  pa.lm <- glmer(pa ~ z + temp + sal + par - 1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
+  stn_sd <- unlist(lapply(VarCorr(pa.lm), function(m) sqrt(diag(m))))
+  fixed_effect <- rowSums(sweep(cbind(d$z[d$stn == i], d$temp[d$stn == i], d$sal[d$stn == i], d$par[d$stn == i]),MARGIN=2,fixef(pa.lm),`*`))
+  
+  pred_sample <- NULL
+  for (j in 1:1000) {
+    pred_sample <- cbind(pred_sample, ilogit(fixed_effect + rnorm(1, mean = 0, sd = stn_sd)))
+  }
+  
+  pred <- c(pred, rowMeans(pred_sample))
+  truth <- c(truth, d$pa[d$stn == i])
+  
+}
+
+pred <- round(pred)
+
+table(pred, truth)
+
+sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
+specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
@@ -320,7 +370,7 @@ for (i in unique(dat$stn)) {
 
 rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean square error
 
-rmse/(max(truth) - min(truth))
+rmse/(max(truth) - min(truth)) #rmse % of true range
 
 plot(truth, pred)
 
@@ -328,7 +378,6 @@ plot(truth, pred)
 #----------------------------- cross validation drop 1 point --------------------------#
 
 pred <- NULL
-pred_se <- NULL
 truth <- NULL
 for (i in 1:nrow(dat)) {
   
@@ -342,7 +391,7 @@ for (i in 1:nrow(dat)) {
 
 rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean square error
 
-rmse/(max(truth) - min(truth))
+rmse/(max(truth) - min(truth)) #rmse % of true range
 
 plot(truth, pred)
 
