@@ -139,7 +139,7 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 
 #using gamm
-p.lm <- gam(log(p) ~ s(l.obs) + s(stn, bs = "re"), dat = dat, gamma = 2)
+p.lm <- gam(log(p) ~ s(l.obs) + s(l.obs, stn, bs = "re"), dat = dat, gamma = 2)
 summary(p.lm)
 plot(p.lm)
 
@@ -245,8 +245,8 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
 
-p.lm <- lme(log(p) ~ l.obs  * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
-            control = list(opt='optim'), weights = varExp(form =~ l.obs))
+p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
+            control = list(opt='optim'), weights = varExp(form =~ oxy))
 summary(p.lm)
 r.squared.lme(p.lm)
 
@@ -256,23 +256,61 @@ y <- p.lm$fitted[, 1]
 #plot residuals against fitted and covariates
 par(mfrow = c(1, 5))
 plot(fitted(p.lm), resid(p.lm, type = "normalized"))
-plot(dat$l.obs, resid(p.lm, type = "normalized"))
+plot(dat$obs, resid(p.lm, type = "normalized"))
 plot(dat$oxy, resid(p.lm, type = "normalized"))
 plot(log(dat$p), y, main = "observed vs fitted with only fixed effects")
 plot(log(dat$p), fitted(p.lm), main = "observed vs fitted")
 
 #3d scatter plot of residuals against covariates
-scatter3d(dat$l.obs, resid(p.lm, type = "normalized"), dat$oxy)
+scatter3d(dat$obs, resid(p.lm, type = "normalized"), dat$oxy)
 
-#cross validation
+#plot of only oxygen
+par(mar = c(5, 5, 1, 1))
+plot(dat$oxy, log(dat$p), xlab = "oxygen", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[3]*dat$oxy)
+x <- (dat$oxy)
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + 
+    (p.lm$coefficients$fixed[3] + p.lm$coefficients$random$stn[i, 2])*dat$oxy[dat$stn == sort(unique(dat$stn))[i]] 
+  x <- (dat$oxy)[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+
+#plot of only l.obs
+par(mar = c(5, 5, 1, 1))
+plot(dat$l.obs, log(dat$p), xlab = "l.obs", ylab = "log(krill density)", pch = 19, col = "grey", cex.lab = 2, cex.axis = 2)
+y <- (p.lm$coefficients$fixed[1] + p.lm$coefficients$fixed[2]*dat$l.obs)
+x <- (dat$l.obs)
+xy <- cbind(x, y)
+xy1 <- xy[order(xy[, 1]), ]
+
+dat$stn <- as.factor(dat$stn)
+for (i in 1:length(unique(dat$stn))) {
+  y <- p.lm$coefficients$fixed[1] + p.lm$coefficients$random$stn[i, 1] + 
+    (p.lm$coefficients$fixed[2] + p.lm$coefficients$random$stn[i, 3])*dat$l.obs[dat$stn == sort(unique(dat$stn))[i]] 
+  x <- (dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
+  xy <- cbind(x, y)
+  xy <- xy[order(xy[, 1]), ]
+  points(xy[, 1], xy[, 2], type = "l")
+}
+points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+
+#----------------------------- cross validation drop 1 station --------------------------#
 
 pred <- NULL
 pred_se <- NULL
 truth <- NULL
 for (i in unique(dat$stn)) {
-  
-  p.lm <- lme(log(p) ~ l.obs  * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
-              control = list(opt='optim'), weights = varExp(form =~ l.obs))
+
+  p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.exclude, 
+              control = list(opt='optim'), weights = varExp(form =~ oxy))
   new_predictions <- predictSE.lme(p.lm, newdata = dat[dat$stn == i, ], na.action = na.omit)
   pred <- c(pred, new_predictions$fit)
   pred_se <- c(pred_se, new_predictions$se.fit)
@@ -282,4 +320,29 @@ for (i in unique(dat$stn)) {
 
 rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean square error
 
+rmse/(max(truth) - min(truth))
+
+plot(truth, pred)
+
+
+#----------------------------- cross validation drop 1 point --------------------------#
+
+pred <- NULL
+pred_se <- NULL
+truth <- NULL
+for (i in 1:nrow(dat)) {
+  
+  p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[-i, ], na.action = na.omit, 
+              control = list(opt='optim'), weights = varExp(form =~ oxy))
+  new_predictions <- predict(p.lm, newdata = dat[i, ], na.action = na.omit)
+  pred <- c(pred, new_predictions)
+  truth <- c(truth, log(dat$p[i]))
+  
+}
+
+rmse  <- sqrt(sum(na.omit((pred - truth)^2))/length(truth)) #calculate root mean square error
+
+rmse/(max(truth) - min(truth))
+
+plot(truth, pred)
 
