@@ -183,12 +183,12 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
 #subset data frame to get only stations with 5 or more data points
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
-colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
-d <- na.omit(d)
-dat <- d[d$pa == 1, ]
-dat$stn <- as.factor(dat$stn)
+#d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
+#colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
+#d <- na.omit(d)
+dat <- d[d$pa == 1 & round(fitted(pa.lm)) == 1, ]
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
+dat$stn <- as.factor(dat$stn)
 
 dat$pwr <- 2^dat$l.obs
 
@@ -426,9 +426,9 @@ plot(truth, pred)
 
 pred <- NULL
 truth <- NULL
-for (i in unique(dat$stn)) {
+for (i in unique(dat$stn[dat$stn != 47])) {
   
-  p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.exclude, 
+  p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
               control = list(opt='optim'), weights = varExp(form =~ oxy))
   
   #resample using extracted random effect sds to simulate random effects
