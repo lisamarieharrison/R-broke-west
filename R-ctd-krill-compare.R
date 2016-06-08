@@ -86,7 +86,7 @@ vif(pa.lm)
 d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9)], 2, scale))
 
 #mixed model with station random effect
-pa.lm <- glmer(pa ~ z + temp + sal + par -1 +(1|stn), data = d, family = "binomial")
+pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
 #calculate sensitivity and specificity
@@ -321,10 +321,11 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
 
-p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
+p.lm <- lme(log(p) ~ obs + oxy, random =~ 1 + obs | stn, data = dat, na.action = na.omit, 
             control = list(opt='optim'), weights = varExp(form =~ oxy))
 summary(p.lm)
 r.squared.lme(p.lm)
+
 
 #extract fitted including only fixed effects
 y <- p.lm$fitted[, 1]
