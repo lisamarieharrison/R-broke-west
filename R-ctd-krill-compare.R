@@ -72,6 +72,8 @@ boxplot(fluoro$l.obs ~ pa, main = "l.obs")
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
+d$log_p <- log(d$p)
+d$log_p[is.infinite(d$log_p)] <- NA
 
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
  
@@ -83,7 +85,7 @@ summary(pa.lm)
 vif(pa.lm)
 
 #scale or model doesn't converge
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9)], 2, scale))
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:10)], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial")
@@ -321,8 +323,8 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
 
-p.lm <- lme(log(p) ~ obs + oxy, random =~ 1 + obs | stn, data = dat, na.action = na.omit, 
-            control = list(opt='optim'), weights = varExp(form =~ oxy))
+p.lm <- lme(log_p ~ obs + oxy , random =~ obs| stn, data = dat, na.action = na.omit, 
+            control = list(opt='optim'), weights = varExp(1, ~oxy))
 summary(p.lm)
 r.squared.lme(p.lm)
 
@@ -335,8 +337,8 @@ par(mfrow = c(1, 5))
 plot(fitted(p.lm), resid(p.lm, type = "normalized"))
 plot(dat$obs, resid(p.lm, type = "normalized"))
 plot(dat$oxy, resid(p.lm, type = "normalized"))
-plot(log(dat$p), y, main = "observed vs fitted with only fixed effects")
-plot(log(dat$p), fitted(p.lm), main = "observed vs fitted")
+plot(dat$log_p, y, main = "observed vs fitted with only fixed effects")
+plot(dat$log_p, fitted(p.lm), main = "observed vs fitted")
 
 #3d scatter plot of residuals against covariates
 scatter3d(dat$obs, resid(p.lm, type = "normalized"), dat$oxy)
@@ -429,7 +431,7 @@ pred <- NULL
 truth <- NULL
 for (i in unique(dat$stn[dat$stn != 47])) {
   
-  p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
+  p.lm <- lme(log_p ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
               control = list(opt='optim'), weights = varExp(form =~ oxy))
   
   #resample using extracted random effect sds to simulate random effects
