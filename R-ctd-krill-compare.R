@@ -93,12 +93,11 @@ stn_coords$depth <- depths$Depth[locV]
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
-<<<<<<< HEAD
+
 d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
-=======
+
 d$log_p <- log(d$p)
 d$log_p[is.infinite(d$log_p)] <- NA
->>>>>>> fbc841a3e50c9fe44c4df92fd5be27e0dfde866a
 
 #bottomm depth plots
 boxplot(-d$depth ~ d$pa)
@@ -244,19 +243,17 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
-<<<<<<< HEAD
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
 d <- na.omit(d)
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
-=======
+
 #subset data frame to get only stations with 5 or more data points
 #d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 #colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
 #d <- na.omit(d)
 dat <- d[d$pa == 1 & round(fitted(pa.lm)) == 1, ]
->>>>>>> fbc841a3e50c9fe44c4df92fd5be27e0dfde866a
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
 dat$stn <- as.factor(dat$stn)
 
@@ -412,18 +409,14 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 
-<<<<<<< HEAD
 p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
             control = list(opt='optim'))
-=======
 p.lm <- lme(log_p ~ obs + oxy , random =~ obs| stn, data = dat, na.action = na.omit, 
             control = list(opt='optim'), weights = varExp(1, ~oxy))
->>>>>>> fbc841a3e50c9fe44c4df92fd5be27e0dfde866a
 summary(p.lm)
 r.squared.lme(p.lm)
 
 
-<<<<<<< HEAD
 #3D plot of obs*oxy interaction
 interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 20), seq(min(dat$obs), max(dat$obs), length.out = 20), unique(dat$stn))
 colnames(interaction_data) <- c("oxy", "obs", "stn")
@@ -434,8 +427,6 @@ pred_fixed$x[exp(pred_fixed$x) > 500] <- NA
 
 scatter3d(pred_fixed$Group.1, pred_fixed$Group.2, exp(pred_fixed$x), xlab = "Phyto", ylab = "Oxygen", zlab = "Krill density")
 
-=======
->>>>>>> fbc841a3e50c9fe44c4df92fd5be27e0dfde866a
 #extract fitted including only fixed effects
 y <- p.lm$fitted[, 1]
 
