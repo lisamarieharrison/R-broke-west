@@ -33,7 +33,7 @@ for (f in function_list) {
 dat <- read.csv(file = "Data/procCTD.csv", header= T)
 names(dat) <- c("survey", "stn", "lat", "long", "start.time", "end.time", "depth", "transmittance", "cond", "temp", "sal", "par", "oxygen", "fluoro", "x2", "ice", "wm")
 
-glm.spl <- setUpFluoro(dat)
+glm.spl <- setUpFluoro(dat, scale = FALSE)
 stn <- unique(density$stn)
 fluoro <- glm.spl[glm.spl$stn %in% stn, ]
 
@@ -113,7 +113,7 @@ summary(pa.lm)
 vif(pa.lm)
 
 #scale or model doesn't converge
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:10)], 2, scale))
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9)], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial")
