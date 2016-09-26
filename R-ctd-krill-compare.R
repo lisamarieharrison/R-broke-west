@@ -69,10 +69,36 @@ boxplot(fluoro$par ~ pa, main = "PAR")
 boxplot(fluoro$temp ~ pa, main = "temp")
 boxplot(fluoro$l.obs ~ pa, main = "l.obs")
 
+#bottom depth
+
+depths <- read.csv("C:/Users/Lisa/Documents/phd/southern ocean/depths/brokeWestDepths.csv")
+stn_coords <- read.csv("~/phd/southern ocean/Mixed models/Data/dat.stn.csv", header = T)
+stn_coords <- stn_coords[, 2:4]
+stn_coords <- stn_coords[!duplicated(stn_coords[, 1]), ]
+
+depths$Latitude[depths$Latitude == 999] <- NA
+depths$Longitude[depths$Longitude == 999] <- NA
+
+locV = NA
+for(i in 1:nrow(stn_coords))
+{
+  dists=distHaversine(p1=c(stn_coords$Longitude[i],stn_coords$Latitude[i]),p2=cbind(depths$Longitude, depths$Latitude))
+  minDistLOC=which.min(dists)
+  message('Minimum distance = ',dists[minDistLOC],' m')  
+  locV[i]=minDistLOC
+}
+
+stn_coords$depth <- depths$Depth[locV]
+
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
+d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
 
+#bottomm depth plots
+boxplot(-d$depth ~ d$pa)
+
+unscaled <- d
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
  
 #glm
@@ -103,6 +129,37 @@ lines(c(0, 1), c(0, 1), col = "red")
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
+
+#partial plots
+par(mfrow = c(2, 2))
+
+predict_pa_re <- expand.grid(seq(min(d$z), max(d$z), length.out = 100), unique(d$stn))
+predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = 0)
+pred_z <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
+pred_z <- aggregate(pred_z, list(predict_pa$z), FUN = mean)
+plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, main = "Depth (m)", type = "l", xlab = "Depth", ylab = "Probability of krill", ylim = c(0, 1))
+
+predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), unique(d$stn))
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0)
+pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
+pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
+plot(pred_z$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, main = "Temperature (Degrees celcius)", ylim = c(0, 1), type = "l", xlab = "Temperature", ylab = "Probability of krill")
+
+predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0)
+pred_sal <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
+pred_sal <- aggregate(pred_sal, list(predict_pa$sal), FUN = mean)
+plot(pred_z$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, main = "Salinity", ylim = c(0, 1), type = "l", xlab = "Salinity", ylab = "Probability of krill")
+
+predict_pa_re <- expand.grid(seq(min(d$par), max(d$par), length.out = 100), unique(d$stn))
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = predict_pa_re$Var1)
+pred_par <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
+pred_par <- aggregate(pred_par, list(predict_pa$par), FUN = mean)
+plot(pred_z$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, main = "PAR", ylim = c(0, 1), type = "l", xlab = "PAR", ylab = "Probability of krill")
+
+
+
+
 
 
 #------------------------ cross validation drop 1 station ---------------------------------#
@@ -182,13 +239,31 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
 
-#subset data frame to get only stations with 5 or more data points
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$l.obs, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "l.obs", "obs")
 d <- na.omit(d)
 dat <- d[d$pa == 1, ]
 dat$stn <- as.factor(dat$stn)
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
+
+dat$lat <- stn_coords$Latitude[match(dat$stn, stn_coords$Cast.Number)]
+dat$long <- stn_coords$Longitude[match(dat$stn, stn_coords$Cast.Number)]
+
+locV = NA
+for(i in 1:nrow(dat))
+{
+  dists=distHaversine(p1=c(dat$long[i], dat$lat[i]),p2=cbind(depths$Longitude, depths$Latitude))
+  minDistLOC=which.min(dists)
+  message('Minimum distance = ',dists[minDistLOC],' m')  
+  locV[i]=minDistLOC
+}
+
+dat$depth <- depths$Depth[locV]
+
+plot(dat$depth[!duplicated(dat$stn)], aggregate(dat$p, list(dat$stn), mean)$x, xlab = "bottom depth (m)",
+     ylab = "mean stn krill density", pch = 19)
+
+
 
 dat$pwr <- 2^dat$l.obs
 
@@ -320,11 +395,24 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
+dat$oxy <- scale(dat$oxy)
+dat$obs <- scale(dat$obs)
 
 p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
-            control = list(opt='optim'), weights = varExp(form =~ oxy))
+            control = list(opt='optim'))
 summary(p.lm)
 r.squared.lme(p.lm)
+
+
+#3D plot of obs*oxy interaction
+interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 20), seq(min(dat$obs), max(dat$obs), length.out = 20), unique(dat$stn))
+colnames(interaction_data) <- c("oxy", "obs", "stn")
+pred_interaction <- predict(p.lm, newdata = interaction_data)
+
+pred_fixed <- aggregate(pred_interaction, list(interaction_data$obs, interaction_data$oxy), FUN = mean)
+pred_fixed$x[exp(pred_fixed$x) > 500] <- NA
+
+scatter3d(pred_fixed$Group.1, pred_fixed$Group.2, exp(pred_fixed$x), xlab = "Phyto", ylab = "Oxygen", zlab = "Krill density")
 
 #extract fitted including only fixed effects
 y <- p.lm$fitted[, 1]
