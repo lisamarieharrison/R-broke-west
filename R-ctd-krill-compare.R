@@ -270,6 +270,15 @@ summary(p.lm)
 r.squared.lme(p.lm)
 
 
+#deviance explained
+model_deviance <- -2*p.lm$logLik
+
+p.null <- lm(log(p) ~ 1, data = dat, na.action = na.omit)
+null_deviance <- -2*logLik(p.null)[1]
+
+(null_deviance - model_deviance)/null_deviance
+
+
 #3D plot of obs*oxy interaction
 interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 200), seq(min(na.omit(dat$l.obs)), max(na.omit(dat$l.obs)), length.out = 200), unique(dat$stn))
 colnames(interaction_data) <- c("oxy", "l.obs", "stn")
@@ -358,8 +367,8 @@ pred <- NULL
 truth <- NULL
 for (i in unique(dat$stn[dat$stn != 47])) {
   
-  p.lm <- lme(log_p ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
-              control = list(opt='optim'), weights = varExp(form =~ oxy))
+  p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy + l.obs | stn, data = dat, na.action = na.omit, 
+              control = list(opt='optim'))
   
   #resample using extracted random effect sds to simulate random effects
   #manually create predictions
@@ -373,12 +382,12 @@ for (i in unique(dat$stn[dat$stn != 47])) {
     oxygen <- (p.lm$coefficients$fixed[3] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[2, 2])))*dat$oxy[dat$stn == i]
     
     #obs
-    obs <- (p.lm$coefficients$fixed[2] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[3, 2])))*dat$obs[dat$stn == i]
+    l.obs <- (p.lm$coefficients$fixed[2] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[3, 2])))*dat$l.obs[dat$stn == i]
     
     #interaction
-    interaction <- p.lm$coefficients$fixed[4]*(dat$oxy*dat$obs)[dat$stn == i]
+    interaction <- p.lm$coefficients$fixed[4]*(dat$oxy*dat$l.obs)[dat$stn == i]
     
-    combined <- exp(intercept + oxygen + obs + interaction)
+    combined <- exp(intercept + oxygen + l.obs + interaction)
     
     combined[combined > 500] <- NA #catch unreasonably large values so they don't skew resample estimates
     
