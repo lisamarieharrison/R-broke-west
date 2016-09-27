@@ -444,7 +444,7 @@ scatter3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence"
 
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
-wireframe(z ~ x * y, data = plot_dat, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)", drape = TRUE,
+wireframe(z ~ x * y, data = plot_dat, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = expression("Krill density"~(gm^-2)), drape = TRUE,
           perspective = FALSE, colorkey = FALSE)
 
 library(colorRamps)  
