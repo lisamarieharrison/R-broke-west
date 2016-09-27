@@ -135,34 +135,37 @@ lines(c(0, 1), c(0, 1), col = "red")
 auc(M.ROC[1,], M.ROC[2,])
 
 #partial plots
-par(mfrow = c(2, 2))
+pdf("~/Lisa/phd/papers/hurdle paper/figures/fig_1.pdf", width = 10, height = 9)
+par(mar = c(4.1,4.1,3.1,2.1), mfrow = c(2, 2), lwd = 2)
+par(oma = c(3, 6, 0, 0))
 
 predict_pa_re <- expand.grid(seq(min(d$z), max(d$z), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = 0)
 pred_z <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_z <- aggregate(pred_z, list(predict_pa$z), FUN = mean)
-plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, main = "Depth (m)", type = "l", xlab = "Depth", ylab = "Probability of krill", ylim = c(0, 1))
+plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, type = "l", xlab = "Depth (m)", ylab = "", ylim = c(0, 1), bty = "n", cex.lab = 1.5, cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
-plot(pred_z$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, main = "Temperature (Degrees celcius)", ylim = c(0, 1), type = "l", xlab = "Temperature", ylab = "Probability of krill")
+plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(temperature~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0)
 pred_sal <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_sal <- aggregate(pred_sal, list(predict_pa$sal), FUN = mean)
-plot(pred_z$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, main = "Salinity", ylim = c(0, 1), type = "l", xlab = "Salinity", ylab = "Probability of krill")
+plot(pred_sal$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, ylim = c(0, 1), type = "l", xlab = "Salinity (ppm)", ylab = "", bty = "n", cex.lab = 1.5, cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$par), max(d$par), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = predict_pa_re$Var1)
 pred_par <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_par <- aggregate(pred_par, list(predict_pa$par), FUN = mean)
-plot(pred_z$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, main = "PAR", ylim = c(0, 1), type = "l", xlab = "PAR", ylab = "Probability of krill")
+plot(pred_par$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, ylim = c(0, 1), type = "l",xlab = expression("PAR" ~ (mu~E ~ m^{-2} ~ s^{-1})), ylab = "", bty = "n", cex.lab = 1.5, cex.axis = 1.5)
 
+mtext("Probability of krill presence", side = 2, outer = TRUE, line = 2, cex = 2)
 
-
+dev.off()
 
 
 
