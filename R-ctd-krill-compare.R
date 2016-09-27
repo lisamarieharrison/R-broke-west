@@ -423,37 +423,35 @@ dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 dat$l.obs <- scale(dat$l.obs)
 
-p.lm <- lme(log(p) ~ obs * oxy, random =~ 1 + oxy + obs | stn, data = dat, na.action = na.omit, 
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy + l.obs | stn, data = dat, na.action = na.omit, 
             control = list(opt='optim'))
 summary(p.lm)
 r.squared.lme(p.lm)
 
 
 #3D plot of obs*oxy interaction
-interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 100), seq(min(na.omit(dat$obs)), max(na.omit(dat$obs)), length.out = 100), unique(dat$stn))
-colnames(interaction_data) <- c("oxy", "obs", "stn")
+interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 200), seq(min(na.omit(dat$l.obs)), max(na.omit(dat$l.obs)), length.out = 200), unique(dat$stn))
+colnames(interaction_data) <- c("oxy", "l.obs", "stn")
 pred_interaction <- predict(p.lm, newdata = interaction_data)
 
-pred_fixed <- aggregate(exp(pred_interaction), list(interaction_data$obs, interaction_data$oxy), FUN = mean)
-pred_fixed$x[exp(pred_fixed$x) > 500] <- NA
+pred_fixed <- aggregate(exp(pred_interaction), list(interaction_data$l.obs, interaction_data$oxy), FUN = mean)
 pred_fixed <- na.omit(pred_fixed)
 
-plot_dat <- data.frame("x" = pred_fixed$Group.1*sd(na.omit(dat_unscaled$obs)) + mean(na.omit(dat_unscaled$obs)), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
+plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
 
 
 scatter3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
-trellis.par.set("axis.line", list(col = NA, lty = 1, lwd = 1))
 wireframe(z ~ x * y, data = plot_dat, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)", drape = TRUE,
           perspective = FALSE, colorkey = FALSE)
 
 library(colorRamps)  
-jet.colors <- colorRampPalette(matlab.like(100))
-colorjet <- jet.colors(50)
+jet.colors <- colorRampPalette(matlab.like(50))
+colorjet <- jet.colors(5)
 open3d()
-rgl.surface(x=unique(pred_fixed$Group.1), z=unique(pred_fixed$Group.2), y=pred_fixed$x, 
+rgl.surface(x=unique(pred_fixed$Group.1)*10, z=unique(pred_fixed$Group.2)*10, y=pred_fixed$x, 
             color=colorjet[ findInterval(exp(pred_fixed$x), seq(min(na.omit(exp(pred_fixed$x))), max(na.omit(exp(pred_fixed$x))), length=100))])
 axes3d()
 title3d(xlab = "Phytoplankton Fluoresence", zlab = "Dissolved Oxygen", ylab = "Krill density (g/m2)")
