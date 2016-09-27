@@ -92,8 +92,8 @@ pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial"
 summary(pa.lm)
 
 #calculate sensitivity and specificity
-sensitivity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
-specificity(as.factor(round(fitted(pa.lm))), as.factor(na.omit(d)$pa), positive = "1", negative = "0")
+sensitivity(as.factor(round(fitted(pa.lm))), as.factor(d$pa), positive = "1", negative = "0")
+specificity(as.factor(round(fitted(pa.lm))), as.factor(d$pa), positive = "1", negative = "0")
 
 #plot a ROC curve for the binomial glm
 M.ROC <- rocCurve(model = pa.lm, threshold = 0.5, data = pa, print = TRUE)
@@ -323,11 +323,14 @@ points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
 
-p.lm <- lme(log_p ~ obs + oxy , random =~ obs| stn, data = dat, na.action = na.omit, 
+p.lm <- lme(log_p ~ obs + oxy, random =~ obs| stn, data = dat, na.action = na.omit, 
             control = list(opt='optim'), weights = varExp(1, ~oxy))
 summary(p.lm)
 r.squared.lme(p.lm)
 
+
+p.lm.t <- glmer(p ~ obs + oxy + (1|stn), data = dat, family = gaussian(link = "log"))
+summary(p.lm.t)
 
 #extract fitted including only fixed effects
 y <- p.lm$fitted[, 1]
