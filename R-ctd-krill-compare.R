@@ -17,6 +17,7 @@ library(flux)
 library(itsadug)
 library(mgcv)
 library(AICcmodavg)
+library(rgl)
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -57,8 +58,6 @@ plot(cbind(fluoro[c(1:2, 6:9)], log(p)))
 
 #plot krill presence/absence against environmental variables
 pa <- krillPresenceAbsence(p)
-
-plot(cbind(fluoro[c(1:2, 6:9)], pa))
 
 #boxplots for presence/absence
 par(mfrow = c(1, 6))
@@ -248,11 +247,13 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
-dat <- d[d$pa == 1 & round(fitted(pa.lm)) == 1, ]
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
+colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
+
+dat <- d[d$pa == 1 & round(fitted(pa.lm)) == 1, ]
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
 dat$stn <- as.factor(dat$stn)
-
 
 dat$obs[dat$obs < 0] <- NA
 dat$l.obs <- log(dat$obs)
@@ -264,7 +265,7 @@ dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 dat$l.obs <- scale(dat$l.obs)
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy + l.obs | stn, data = dat, na.action = na.omit, 
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy | stn, data = dat, na.action = na.omit, 
             control = list(opt='optim'))
 summary(p.lm)
 r.squared.lme(p.lm)
@@ -355,9 +356,9 @@ for (i in 1:length(unique(dat$stn))) {
   x <- (dat$l.obs)[dat$stn == sort(unique(dat$stn))[i]]
   xy <- cbind(x, y)
   xy <- xy[order(xy[, 1]), ]
-  points(xy[, 1], xy[, 2], type = "l")
+  points(exp(xy[, 1]), exp(xy[, 2]), type = "l")
 }
-points(xy1[, 1], xy1[, 2], col = "red", type = "l", lwd = 4)
+points(exp(xy1[, 1]), exp(xy1[, 2]), col = "red", type = "l", lwd = 4)
 
 
 
