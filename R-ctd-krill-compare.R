@@ -34,6 +34,8 @@ for (f in function_list) {
 dat <- read.csv(file = "Data/procCTD.csv", header= T)
 names(dat) <- c("survey", "stn", "lat", "long", "start.time", "end.time", "depth", "transmittance", "cond", "temp", "sal", "par", "oxygen", "fluoro", "x2", "ice", "wm")
 
+ctd_time <- read.csv("Data/ctd_times.csv", header = T)
+
 glm.spl <- setUpFluoro(dat, scale = FALSE)
 stn <- unique(density$stn)
 fluoro <- glm.spl[glm.spl$stn %in% stn, ]
@@ -93,6 +95,14 @@ d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$t
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
 
+d$time <- NA
+for (i in 1:nrow(d)) {
+  d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
+}
+
+d$time <- chron(times. = d$time , format = "h:m:s")
+d$hour <- hours(d$time)
+
 d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
 
 d$log_p <- log(d$p)
@@ -148,7 +158,7 @@ predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), un
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
-plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(temperature~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
+plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(Temperature~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0)
