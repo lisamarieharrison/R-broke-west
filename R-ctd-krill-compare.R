@@ -178,26 +178,6 @@ dev.off()
 
 
 
-#------------------------ cross validation drop 1 station ---------------------------------#
-
-truth <- NULL
-pred  <- NULL
-for (i in unique(d$stn)) {
-  
-  pa.lm <- glmer(pa ~ z + temp + sal + par - 1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
-  pred <- c(pred, predict(pa.lm, newdata = d[d$stn == i, ], allow.new.levels = T, type = "response"))
-  truth <- c(truth, d$pa[d$stn == i])
-  
-}
-
-pred <- round(pred)
-
-table(pred, truth)
-
-sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
-specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
-
-
 #--------------------- simulating random effects for cross validation ------------------------#
 
 #Need to add random effect back in. Can't leave it out because data transformation in binomial glm will skew results
@@ -230,27 +210,6 @@ table(pred, truth)
 
 sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
 specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
-
-
-#------------------------ cross validation drop 1 station without random effect -------------------------------#
-
-truth <- NULL
-pred  <- NULL
-for (i in unique(d$stn)) {
-  
-  pa.lm <- glm(pa ~ z + temp + sal + par - 1, data = d[d$stn != i, ], family = "binomial")
-  pred <- c(pred, predict(pa.lm, newdata = d[d$stn == i, ], allow.new.levels = T, type = "response"))
-  truth <- c(truth, d$pa[d$stn == i])
-  
-}
-
-pred <- round(pred)
-
-table(pred, truth)
-
-sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
-specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true negative rate
-
 
 
 #-------------------------- KRILL VS PHYTOPLANKTON ----------------------------#
