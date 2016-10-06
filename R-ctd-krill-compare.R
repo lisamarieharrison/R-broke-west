@@ -158,7 +158,7 @@ predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), un
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0, "day" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
-plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(Temperature~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
+plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(SST~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0, "day" = 0)
