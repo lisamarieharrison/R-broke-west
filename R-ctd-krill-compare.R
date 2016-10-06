@@ -245,7 +245,7 @@ dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 dat$l.obs <- scale(dat$l.obs)
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy | stn, data = dat, na.action = na.omit, 
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy | stn, data = dat, na.action = na.omit,
             control = list(opt='optim'))
 summary(p.lm)
 r.squared.lme(p.lm)
@@ -293,10 +293,10 @@ y <- p.lm$fitted[, 1]
 #plot residuals against fitted and covariates
 par(mfrow = c(1, 5))
 plot(fitted(p.lm), resid(p.lm, type = "normalized"))
-plot(dat$obs, resid(p.lm, type = "normalized"))
-plot(dat$oxy, resid(p.lm, type = "normalized"))
-plot(dat$log_p, y, main = "observed vs fitted with only fixed effects")
-plot(dat$log_p, fitted(p.lm), main = "observed vs fitted")
+plot(na.omit(dat)$l.obs, resid(p.lm, type = "normalized"))
+plot(na.omit(dat)$oxy, resid(p.lm, type = "normalized"))
+plot(log(dat$p), y, main = "observed vs fitted with only fixed effects")
+plot(log(dat$p), fitted(p.lm), main = "observed vs fitted")
 
 #3d scatter plot of residuals against covariates
 scatter3d(dat$obs, resid(p.lm, type = "normalized"), dat$oxy)
