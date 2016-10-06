@@ -18,6 +18,7 @@ library(itsadug)
 library(mgcv)
 library(AICcmodavg)
 library(rgl)
+library(colorRamps)  
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -96,8 +97,10 @@ colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
 
 d$time <- NA
+d$day <- NA
 for (i in 1:nrow(d)) {
   d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
+  d$day[i] <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
 }
 
 d$time <- chron(times. = d$time , format = "h:m:s")
@@ -107,9 +110,6 @@ d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
 
 d$log_p <- log(d$p)
 d$log_p[is.infinite(d$log_p)] <- NA
-
-#bottomm depth plots
-boxplot(-d$depth ~ d$pa)
 
 unscaled <- d
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
@@ -122,7 +122,7 @@ summary(pa.lm)
 vif(pa.lm)
 
 #scale or model doesn't converge
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9)], 2, scale))
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9, 11)], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial")
@@ -149,25 +149,25 @@ par(mar = c(4.1,4.1,3.1,2.1), mfrow = c(2, 2), lwd = 2)
 par(oma = c(3, 6, 0, 0))
 
 predict_pa_re <- expand.grid(seq(min(d$z), max(d$z), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = 0)
+predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = 0, "day" = 0)
 pred_z <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_z <- aggregate(pred_z, list(predict_pa$z), FUN = mean)
 plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, type = "l", xlab = "Depth (m)", ylab = "", ylim = c(0, 1), bty = "n", cex.lab = 1.5, cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0)
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0, "day" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
 plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(Temperature~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0)
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0, "day" = 0)
 pred_sal <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_sal <- aggregate(pred_sal, list(predict_pa$sal), FUN = mean)
 plot(pred_sal$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, ylim = c(0, 1), type = "l", xlab = "Salinity (ppm)", ylab = "", bty = "n", cex.lab = 1.5, cex.axis = 1.5)
 
 predict_pa_re <- expand.grid(seq(min(d$par), max(d$par), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = predict_pa_re$Var1)
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = predict_pa_re$Var1, "day" = 0)
 pred_par <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_par <- aggregate(pred_par, list(predict_pa$par), FUN = mean)
 plot(pred_par$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, ylim = c(0, 1), type = "l",xlab = expression("PAR" ~ (mu~E ~ m^{-2} ~ s^{-1})), ylab = "", bty = "n", cex.lab = 1.5, cex.axis = 1.5)
@@ -261,6 +261,17 @@ d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$t
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
 d <- na.omit(d)
 
+
+d$time <- NA
+d$day <- NA
+for (i in 1:nrow(d)) {
+  d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
+  d$day[i] <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
+}
+
+d$time <- chron(times. = d$time , format = "h:m:s")
+d$hour <- hours(d$time)
+
 dat <- d[d$pa == 1 & round(fitted(pa.lm)) == 1, ]
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
 dat$stn <- as.factor(dat$stn)
@@ -300,15 +311,14 @@ pred_fixed <- na.omit(pred_fixed)
 
 plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
 
-
-scatter3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
-
+#interactive dot plot
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
+#static plot for paper
 wireframe(z ~ x * y, data = plot_dat, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = expression("Krill density"~(gm^-2)), drape = TRUE,
           perspective = FALSE, colorkey = FALSE)
 
-library(colorRamps)  
+#interactive surface plot
 jet.colors <- colorRampPalette(matlab.like(50))
 colorjet <- jet.colors(5)
 open3d()
