@@ -19,6 +19,7 @@ library(mgcv)
 library(AICcmodavg)
 library(rgl)
 library(colorRamps)  
+library(chron)
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -110,6 +111,8 @@ d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
 
 d$log_p <- log(d$p)
 d$log_p[is.infinite(d$log_p)] <- NA
+
+d$obs[d$obs < 0] <- NA
 
 unscaled <- d
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
