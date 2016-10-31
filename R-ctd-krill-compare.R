@@ -101,7 +101,7 @@ d$time <- NA
 d$day <- NA
 for (i in 1:nrow(d)) {
   d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
-  d$day[i] <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
+  d$day[i]  <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
 }
 
 d$time <- chron(times. = d$time , format = "h:m:s")
@@ -125,7 +125,7 @@ summary(pa.lm)
 vif(pa.lm)
 
 #scale or model doesn't converge
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9, 11)], 2, scale))
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9, 10)], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial")
@@ -147,38 +147,84 @@ lines(c(0, 1), c(0, 1), col = "red")
 auc(M.ROC[1,], M.ROC[2,])
 
 #partial plots
-pdf("~/Lisa/phd/papers/hurdle paper/figures/fig_1.pdf", width = 10, height = 9)
+pdf("C:/Users/Lisa/Dropbox/uni/hurdle paper/figures/fig_1.pdf", width = 10, height = 9)
 par(mar = c(4.1,4.1,3.1,2.1), mfrow = c(2, 2), lwd = 2)
 par(oma = c(3, 6, 0, 0))
 
+#depth
 predict_pa_re <- expand.grid(seq(min(d$z), max(d$z), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = 0, "day" = 0)
 pred_z <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_z <- aggregate(pred_z, list(predict_pa$z), FUN = mean)
-plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, type = "l", xlab = "Depth (m)", ylab = "", ylim = c(0, 1), bty = "n", cex.lab = 1.5, cex.axis = 1.5)
+plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, type = "l", xlab = "Depth (m)", ylab = "", ylim = c(0, 1), bty = "l", cex.lab = 1.5, cex.axis = 1.5)
+legend("topleft", "(a)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
+mm <- model.matrix(~z, predict_pa)
+y <- mm%*%fixef(pa.lm)[1:2]
+pvar1 <- diag(mm %*% tcrossprod(vcov(pa.lm)[1:2, 1:2], mm))
+tlo = inv.logit(y - 1.96*sqrt(pvar1))
+thi = inv.logit(y + 1.96*sqrt(pvar1))
+tlo <- aggregate(tlo, list(predict_pa$z), FUN = mean)
+thi <- aggregate(thi, list(predict_pa$z), FUN = mean)
+points(tlo$Group.1  * sd(unscaled$z) + mean(unscaled$z), tlo$V1, lty = 2, type = "l")
+points(thi$Group.1  * sd(unscaled$z) + mean(unscaled$z), thi$V1, lty = 2, type = "l")
 
+
+#temperature
 predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0, "day" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
-plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(SST~(~degree~C)), ylab = "", bty = "n", cex.axis = 1.5)
+plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(SST~(~degree~C)), ylab = "", bty = "l", cex.axis = 1.5)
+legend("topleft", "(b)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
+mm <- model.matrix(~temp, predict_pa)
+y <- mm%*%fixef(pa.lm)[c(1, 3)]
+pvar1 <- diag(mm %*% tcrossprod(vcov(pa.lm)[c(1, 3), c(1, 3)], mm))
+tlo = inv.logit(y - 1.96*sqrt(pvar1))
+thi = inv.logit(y + 1.96*sqrt(pvar1))
+tlo <- aggregate(tlo, list(predict_pa$temp), FUN = mean)
+thi <- aggregate(thi, list(predict_pa$temp), FUN = mean)
+points(tlo$Group.1  * sd(unscaled$temp) + mean(unscaled$temp), tlo$V1, lty = 2, type = "l")
+points(thi$Group.1  * sd(unscaled$temp) + mean(unscaled$temp), thi$V1, lty = 2, type = "l")
 
+
+#salinity
 predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0, "day" = 0)
 pred_sal <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_sal <- aggregate(pred_sal, list(predict_pa$sal), FUN = mean)
-plot(pred_sal$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, ylim = c(0, 1), type = "l", xlab = "Salinity (ppm)", ylab = "", bty = "n", cex.lab = 1.5, cex.axis = 1.5)
+plot(pred_sal$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, ylim = c(0, 1), type = "l", xlab = "Salinity (ppm)", ylab = "", bty = "l", cex.lab = 1.5, cex.axis = 1.5)
+legend("topleft", "(c)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
+mm <- model.matrix(~sal, predict_pa)
+y <- mm%*%fixef(pa.lm)[c(1, 4)]
+pvar1 <- diag(mm %*% tcrossprod(vcov(pa.lm)[c(1, 4), c(1, 4)], mm))
+tlo = inv.logit(y - 1.96*sqrt(pvar1))
+thi = inv.logit(y + 1.96*sqrt(pvar1))
+tlo <- aggregate(tlo, list(predict_pa$sal), FUN = mean)
+thi <- aggregate(thi, list(predict_pa$sal), FUN = mean)
+points(tlo$Group.1  * sd(unscaled$sal) + mean(unscaled$sal), tlo$V1, lty = 2, type = "l")
+points(thi$Group.1  * sd(unscaled$sal) + mean(unscaled$sal), thi$V1, lty = 2, type = "l")
 
+#par
 predict_pa_re <- expand.grid(seq(min(d$par), max(d$par), length.out = 100), unique(d$stn))
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = predict_pa_re$Var1, "day" = 0)
 pred_par <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_par <- aggregate(pred_par, list(predict_pa$par), FUN = mean)
-plot(pred_par$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, ylim = c(0, 1), type = "l",xlab = expression("PAR" ~ (mu~E ~ m^{-2} ~ s^{-1})), ylab = "", bty = "n", cex.lab = 1.5, cex.axis = 1.5)
+plot(pred_par$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, ylim = c(0, 1), type = "l",xlab = expression("PAR" ~ (mu~E ~ m^{-2} ~ s^{-1})), ylab = "", bty = "l", cex.lab = 1.5, cex.axis = 1.5)
+legend("topleft", "(d)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
+mm <- model.matrix(~par, predict_pa)
+y <- mm%*%fixef(pa.lm)[c(1, 5)]
+pvar1 <- diag(mm %*% tcrossprod(vcov(pa.lm)[c(1, 5), c(1, 5)], mm))
+tlo = inv.logit(y - 1.96*sqrt(pvar1))
+thi = inv.logit(y + 1.96*sqrt(pvar1))
+tlo <- aggregate(tlo, list(predict_pa$par), FUN = mean)
+thi <- aggregate(thi, list(predict_pa$par), FUN = mean)
+points(tlo$Group.1  * sd(unscaled$par) + mean(unscaled$par), tlo$V1, lty = 2, type = "l")
+points(thi$Group.1  * sd(unscaled$par) + mean(unscaled$par), thi$V1, lty = 2, type = "l")
+
 
 mtext("Probability of krill presence", side = 2, outer = TRUE, line = 2, cex = 2)
 
 dev.off()
-
 
 
 #--------------------- simulating random effects for cross validation ------------------------#
@@ -277,8 +323,22 @@ plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.ob
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
 #static plot for paper
-wireframe(z ~ x * y, data = plot_dat, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = expression("Krill density"~(gm^-2)), drape = TRUE,
-          perspective = FALSE, colorkey = FALSE)
+
+p <- local({
+  len <- 100
+  col.regions=colorRampPalette(c("white","lightblue", "darkblue"))(len)
+  col <- rgb2hsv(col2rgb(col.regions))[1,]
+  function (irr, ref, height, saturation = 0.9) {
+    h <- col[1 + ceiling((len -1) * height)]
+    hsv(h = h, s = 1 - saturation * (1 - (1 - ref)^0.5), 
+        v = irr)
+  }
+})
+
+wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression("Krill density"~(gm^-2)),
+          perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5)),
+          shade.colors.palette = p, shade = TRUE,
+          par.settings = list(axis.line=list(col="transparent")))
 
 #interactive surface plot
 jet.colors <- colorRampPalette(matlab.like(50))
