@@ -324,21 +324,11 @@ plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", y
 
 #static plot for paper
 
-p <- local({
-  len <- 100
-  col.regions=colorRampPalette(c("white","lightblue", "darkblue"))(len)
-  col <- rgb2hsv(col2rgb(col.regions))[1,]
-  function (irr, ref, height, saturation = 0.9) {
-    h <- col[1 + ceiling((len -1) * height)]
-    hsv(h = h, s = 1 - saturation * (1 - (1 - ref)^0.5), 
-        v = irr)
-  }
-})
 
 wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression("Krill density"~(gm^-2)),
           perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5)),
-          shade.colors.palette = p, shade = TRUE,
-          par.settings = list(axis.line=list(col="transparent")))
+          drape = T, par.settings = list(axis.line=list(col="transparent")), col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent")
+
 
 #interactive surface plot
 jet.colors <- colorRampPalette(matlab.like(50))
