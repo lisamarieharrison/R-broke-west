@@ -302,7 +302,7 @@ dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 dat$l.obs <- scale(dat$l.obs)
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy | stn, data = dat, na.action = na.omit,
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 | stn, data = dat, na.action = na.omit,
             control = list(opt='optim'))
 summary(p.lm)
 r.squared.lme(p.lm)
@@ -332,10 +332,9 @@ plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", y
 
 #static plot for paper
 
-
 wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression("Krill density"~(gm^-2)),
-          perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5)),
-          drape = T,  col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent")
+          perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5), col = "black"),
+          drape = T,  col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent", par.settings = list(axis.line = list(col = 'transparent')))
 
 
 #interactive surface plot
