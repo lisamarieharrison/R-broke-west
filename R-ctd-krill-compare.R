@@ -267,7 +267,11 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
 colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
+d$l.obs <- log(d$obs)
+d$l.obs[is.infinite(d$l.obs)] <- NA
 d <- na.omit(d)
+
+
 
 
 d$time <- NA
@@ -294,10 +298,58 @@ dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 dat$l.obs <- scale(dat$l.obs)
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy | stn, data = dat, na.action = na.omit,
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 | stn, data = dat, na.action = na.omit,
             control = list(opt='optim'))
 summary(p.lm)
 r.squared.lme(p.lm)
+
+
+coplot(log(p) ~ oxy|l.obs,data=dat,overlap = 0, pch = 19)
+coplot(p ~ oxy|l.obs,data=d,overlap = 0, pch = 19)
+
+d$krill <- d$p/10 #volumetric density gm-3
+d$krill_agg <- "None"
+d$krill_agg[d$krill > 0 & d$krill < 1.6] <- "Un-agg"
+d$krill_agg[d$krill >= 1.6] <- "Agg"
+d$krill_agg <- factor(d$krill_agg, c("None","Un-agg","Agg"))
+
+
+color <- rep("yellow", nrow(d))
+color[d$p == 0] <- "black"
+color[d$p > 1.6] <- "red"
+
+plot3d(d$p, d$oxy, d$l.obs, size = 5, col = color)
+
+pairs(~ oxy + sal + z + par + temp + l.obs + krill, data = d, col = color, pch = 19)
+
+#depth
+plot(d$krill, -d$z, col = color, pch = 19, ylab = "Depth (m)", xlab = "Krill density (gm-3)")
+legend("bottomright", c("No krill", "Un-aggregated", "Aggregated"), col = c("black", "yellow", "red"), pch = 19, bty = "n")
+boxplot(-d$z ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), ylab = "Depth (m)")
+
+#oxygen
+plot(d$oxy, d$krill, col = color, pch = 19, xlab = "Oxygen", ylab = "Krill density (gm-3)")
+legend("topleft", c("No krill", "Un-aggregated", "Aggregated"), col = c("black", "yellow", "red"), pch = 19, bty = "n")
+boxplot(d$oxy ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), ylab = "Oxygen")
+
+#phytoplankton
+plot(d$l.obs, d$krill, col = color, pch = 19, xlab = "Phytoplankton", ylab = "Krill density (gm-3)")
+legend("topleft", c("No krill", "Un-aggregated", "Aggregated"), col = c("black", "yellow", "red"), pch = 19, bty = "n")
+boxplot(d$l.obs ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), ylab = "Phytoplankton")
+
+#boxplots
+par(mfrow = c(1, 5))
+boxplot(d$sal ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Salinity")
+boxplot(d$oxy ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Oxygen")
+boxplot(d$l.obs ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Phytoplankton")
+boxplot(d$temp ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Temperature")
+boxplot(-d$z ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Depth")
+
+
+
+
+p.gam <- gam(p ~ ti(l.obs, oxy) + s(sal) + s(z) + s(par), data = dat, family = Tweedie(p = 1.1))
+summary(p.gam)
 
 
 #deviance explained
@@ -321,6 +373,8 @@ plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.ob
 
 #interactive dot plot
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
+
+plot3d(d$obs, d$oxy, d$p)
 
 #static plot for paper
 
