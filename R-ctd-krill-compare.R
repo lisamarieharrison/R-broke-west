@@ -129,7 +129,7 @@ vif(pa.lm)
 
 #scale or model doesn't converge
 
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:12)], 2, scale))
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:11)], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal - 1 +(1|stn), data = d, family = "binomial")
@@ -219,15 +219,16 @@ dev.off()
 #Need to add random effect back in. Can't leave it out because data transformation in binomial glm will skew results
 #Using example from Simon Wotherspoon
 
+
 ilogit <- function(x) 1/(1+exp(-x))
 
 truth <- NULL
 pred  <- NULL
 for (i in unique(d$stn)) {
   
-  pa.lm <- glmer(pa ~ z + temp + sal - 1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
+  pa.lm <- glmer(pa ~ z + sal + temp + l.obs -1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
   stn_sd <- unlist(lapply(VarCorr(pa.lm), function(m) sqrt(diag(m))))
-  fixed_effect <- rowSums(sweep(d[d$stn == i, names(coef(pa.lm)$stn)[-1]],MARGIN=2,fixef(pa.lm),`*`))
+  fixed_effect <- rowSums(sweep(d[d$stn == i, names(coef(pa.lm)$stn)[-1]], MARGIN=2, fixef(pa.lm),`*`))
   
   
   #resample to add in station random effect using extracted random effect sd
@@ -243,8 +244,6 @@ for (i in unique(d$stn)) {
 
 #cross validation ROC
 crossValROC(pred, truth)
-
-pred <- round(pred)
 
 table(pred, truth)
 
@@ -423,11 +422,9 @@ plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.ob
 #interactive dot plot
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
-plot3d(d$obs, d$oxy, d$p)
 
 #static plot for paper
-
-wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression("Krill density"~(gm^-2)),
+wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression(atop("Krill density",~(gm^-2))),
           perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5), col = "black"),
           drape = T,  col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent", par.settings = list(axis.line = list(col = 'transparent')))
 
