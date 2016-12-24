@@ -417,16 +417,35 @@ pred_interaction <- predict(p.lm, newdata = interaction_data)
 pred_fixed <- aggregate(exp(pred_interaction), list(interaction_data$l.obs, interaction_data$oxy), FUN = mean)
 pred_fixed <- na.omit(pred_fixed)
 
-plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
+plot_dat <- data.frame("x" = (pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
 
 #interactive dot plot
-plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
+plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Log Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
+plot3d(dat$oxy, dat$obs, residuals(p.lm, type = "pearson"), xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
 #static plot for paper
-wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression(atop("Krill density",~(gm^-2))),
+wireframe(z ~ x * y, data = plot_dat, xlab = expression("Ln(Phytoplankton)" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression(atop("Krill density",~(gm^-2))),
           perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5), col = "black"),
           drape = T,  col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent", par.settings = list(axis.line = list(col = 'transparent')))
+
+#surface plot with data for paper
+interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 50), seq(min(na.omit(dat$l.obs)), max(na.omit(dat$l.obs)), length.out = 50), unique(dat$stn))
+colnames(interaction_data) <- c("oxy", "l.obs", "stn")
+pred_interaction <- predict(p.lm, newdata = interaction_data)
+
+pred_fixed <- aggregate(exp(pred_interaction), list(interaction_data$l.obs, interaction_data$oxy), FUN = mean)
+pred_fixed <- na.omit(pred_fixed)
+
+plot_dat <- data.frame("x" = (pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
+
+
+p <- persp(unique(plot_dat$x), unique(plot_dat$y), matrix(plot_dat$z, ncol = 50), xlab="Phytoplankton", ylab="Oxygen", zlab="Krill", 
+           theta=-40, shade = 0.2, col = "lightgrey")
+
+obs  <- trans3d(unscaled$l.obs, unscaled$oxy, unscaled$p, p)
+points(obs, col="red",pch=16)
+
 
 
 #interactive surface plot
