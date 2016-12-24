@@ -110,7 +110,7 @@ d <- na.omit(d)
 d$time <- chron(times. = d$time , format = "h:m:s")
 d$hour <- hours(d$time)
 
-d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
+#d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
 
 d$obs[d$obs < 0] <- NA
 
@@ -128,6 +128,7 @@ summary(pa.lm)
 vif(pa.lm)
 
 #scale or model doesn't converge
+
 d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:12)], 2, scale))
 
 #mixed model with station random effect
@@ -150,7 +151,7 @@ lines(c(0, 1), c(0, 1), col = "red")
 auc(M.ROC[1,], M.ROC[2,])
 
 #partial plots
-pdf("C:/Users/Lisa/Dropbox/uni/hurdle paper/figures/fig_1.pdf", width = 10, height = 9)
+pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_1.pdf", width = 10, height = 9)
 par(mar = c(4.1,4.1,3.1,2.1), mfrow = c(2, 2), lwd = 2)
 par(oma = c(3, 6, 0, 0))
 
@@ -177,7 +178,7 @@ predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), un
 predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "day" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
-plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(SST~(~degree~C)), ylab = "", bty = "l", cex.axis = 1.5)
+plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(Temperature~(~degree~C)), ylab = "", bty = "l", cex.axis = 1.5)
 legend("topleft", "(b)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
 mm <- model.matrix(~temp, predict_pa)
 y <- mm%*%fixef(pa.lm)[c(1, 3)]
@@ -426,21 +427,10 @@ plot3d(d$obs, d$oxy, d$p)
 
 #static plot for paper
 
-p <- local({
-  len <- 100
-  col.regions=colorRampPalette(c("white","lightblue", "darkblue"))(len)
-  col <- rgb2hsv(col2rgb(col.regions))[1,]
-  function (irr, ref, height, saturation = 0.9) {
-    h <- col[1 + ceiling((len -1) * height)]
-    hsv(h = h, s = 1 - saturation * (1 - (1 - ref)^0.5), 
-        v = irr)
-  }
-})
-
 wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression("Krill density"~(gm^-2)),
-          perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5)),
-          shade.colors.palette = p, shade = TRUE,
-          par.settings = list(axis.line=list(col="transparent")))
+          perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5), col = "black"),
+          drape = T,  col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent", par.settings = list(axis.line = list(col = 'transparent')))
+
 
 #interactive surface plot
 jet.colors <- colorRampPalette(matlab.like(50))
