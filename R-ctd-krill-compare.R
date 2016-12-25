@@ -290,9 +290,13 @@ p.lm <- lme(log(p) ~ l.obs*oxy, random =~ 1 | stn, data = dat, na.action = na.om
 summary(p.lm)
 r.squared.lme(p.lm)
 
+#plot of obs & oxy for paper
+plot(dat$obs, dat$oxy, pch = 19, xlab = "Phytoplankton fluorescence", ylab = "Dissolved oxygen", bty = "n")
+
+
 #difference mean and variance by group
 #see http://r.789695.n4.nabble.com/unequal-variance-assumption-for-lme-mixed-effect-model-td828664.html
-#read P
+#read Pinheiro & Bates 2000
 boxplot(log(dat$p) ~ dat$stn)
 
 
