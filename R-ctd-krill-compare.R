@@ -20,6 +20,7 @@ library(AICcmodavg)
 library(rgl)
 library(colorRamps)  
 library(chron)
+library(MuMIn)
 library(geosphere) #distHaversine
 library(boot) #inv.logit
 
@@ -288,7 +289,7 @@ p.lm <- lme(log(p) ~ l.obs*oxy, random =~ 1 | stn, data = dat, na.action = na.om
             weights = vf)
 
 summary(p.lm)
-r.squared.lme(p.lm)
+r.squaredGLMM(p.lm)
 
 #plot of obs & oxy for paper
 plot(dat$obs, dat$oxy, pch = 19, xlab = "Phytoplankton fluorescence", ylab = "Dissolved oxygen", bty = "n")
@@ -425,8 +426,6 @@ plot_dat <- data.frame("x" = (pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs))
 
 #interactive dot plot
 plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Log Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
-
-plot3d(dat$oxy, dat$obs, residuals(p.lm, type = "pearson"), xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
 #static plot for paper
 wireframe(z ~ x * y, data = plot_dat, xlab = expression("Ln(Phytoplankton)" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression(atop("Krill density",~(gm^-2))),
