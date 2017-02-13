@@ -20,6 +20,8 @@ library(AICcmodavg)
 library(rgl)
 library(colorRamps)  
 library(chron)
+library(MuMIn)
+library(geosphere) #distHaversine
 library(boot) #inv.logit
 
 #source required functions
@@ -60,19 +62,19 @@ transformKrill <- function (krill, fluoro) {
 p <- transformKrill(density, fluoro)
 
 #plot log krill against environmental variables
-plot(cbind(fluoro[c(1:2, 6:9)], log(p)))
+#plot(cbind(fluoro[c(1:2, 6:9)], log(p)))
 
 #plot krill presence/absence against environmental variables
 pa <- krillPresenceAbsence(p)
 
 #boxplots for presence/absence
-par(mfrow = c(1, 6))
-boxplot(fluoro$oxy ~ pa, main = "Oxygen")
-boxplot(fluoro$sal ~ pa, main = "Salinity")
-boxplot(fluoro$z ~ pa, main = "Depth")
-boxplot(fluoro$par ~ pa, main = "PAR")
-boxplot(fluoro$temp ~ pa, main = "temp")
-boxplot(fluoro$l.obs ~ pa, main = "l.obs")
+# par(mfrow = c(1, 6))
+# boxplot(fluoro$oxy ~ pa, main = "Oxygen")
+# boxplot(fluoro$sal ~ pa, main = "Salinity")
+# boxplot(fluoro$z ~ pa, main = "Depth")
+# boxplot(fluoro$par ~ pa, main = "PAR")
+# boxplot(fluoro$temp ~ pa, main = "temp")
+# boxplot(fluoro$l.obs ~ pa, main = "l.obs")
 
 #bottom depth
 
@@ -95,24 +97,21 @@ for(i in 1:nrow(stn_coords))
 
 stn_coords$depth <- depths$Depth[locV]
 
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
-colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs, fluoro$ice))
+colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs", "ice")
 d <- na.omit(d)
 
-d$time <- NA
-d$day <- NA
-for (i in 1:nrow(d)) {
-  d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
-  d$day[i]  <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
-}
+# d$time <- NA
+# d$day <- NA
+# for (i in 1:nrow(d)) {
+#   d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
+#   d$day[i]  <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
+# }
 
 d$time <- chron(times. = d$time , format = "h:m:s")
 d$hour <- hours(d$time)
 
 #d$depth <- stn_coords$depth[match(d$stn, stn_coords$Cast.Number)]
-
-d$log_p <- log(d$p)
-d$log_p[is.infinite(d$log_p)] <- NA
 
 d$obs[d$obs < 0] <- NA
 
@@ -123,17 +122,18 @@ unscaled <- d
 #-------------------- BINOMIAL GLM FOR PRESENCE/ABSENCE -----------------------#
  
 #glm
-pa.lm <- glm(pa ~ z + temp + sal + par, dat = d, family = "binomial")
+pa.lm <- glm(pa ~ z + temp + sal - 1, dat = d, family = "binomial")
 summary(pa.lm)
 
 #calculate variance inflation factors (<5 = good)
 vif(pa.lm)
 
 #scale or model doesn't converge
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9, 10, 14)], 2, scale))
+
+d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:11)], 2, scale))
 
 #mixed model with station random effect
-pa.lm <- glmer(pa ~ z + temp + sal +(1|stn), data = d, family = "binomial")
+pa.lm <- glmer(pa ~ z + temp + sal - 1 +(1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
 #calculate sensitivity and specificity
@@ -163,13 +163,13 @@ par(oma = c(3, 6, 0, 0))
 
 #depth
 predict_pa_re <- expand.grid(seq(min(d$z), max(d$z), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = 0, "day" = 0)
+predict_pa <- data.frame("z" = predict_pa_re$Var1, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0)
 pred_z <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_z <- aggregate(pred_z, list(predict_pa$z), FUN = mean)
 plot(pred_z$Group.1 * sd(unscaled$z) + mean(unscaled$z), pred_z$x, type = "l", xlab = "Depth (m)", ylab = "", ylim = c(0, 1), bty = "l", cex.lab = 1.5, cex.axis = 1.5)
 legend("topleft", "(a)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
 mm <- model.matrix(~z, predict_pa)
-y <- mm%*%fixef(pa.lm)[1:2]
+y <- mm%*%fixef(pa.lm)[1]
 pvar1 <- diag(mm %*% tcrossprod(vcov(pa.lm)[1:2, 1:2], mm))
 tlo = inv.logit(y - 1.96*sqrt(pvar1))
 thi = inv.logit(y + 1.96*sqrt(pvar1))
@@ -181,7 +181,7 @@ points(thi$Group.1  * sd(unscaled$z) + mean(unscaled$z), thi$V1, lty = 2, type =
 
 #temperature
 predict_pa_re <- expand.grid(seq(min(d$temp), max(d$temp), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "par" = 0, "day" = 0)
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = predict_pa_re$Var1, "sal" = 0, "day" = 0)
 pred_temp <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_temp <- aggregate(pred_temp, list(predict_pa$temp), FUN = mean)
 plot(pred_temp$Group.1 * sd(unscaled$temp) + mean(unscaled$temp), pred_temp$x, ylim = c(0, 1),type = "l", cex.lab = 1.5, xlab = expression(Temperature~(~degree~C)), ylab = "", bty = "l", cex.axis = 1.5)
@@ -199,7 +199,7 @@ points(thi$Group.1  * sd(unscaled$temp) + mean(unscaled$temp), thi$V1, lty = 2, 
 
 #salinity
 predict_pa_re <- expand.grid(seq(min(d$sal), max(d$sal), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "par" = 0, "day" = 0)
+predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = predict_pa_re$Var1, "day" = 0)
 pred_sal <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
 pred_sal <- aggregate(pred_sal, list(predict_pa$sal), FUN = mean)
 plot(pred_sal$Group.1 * sd(unscaled$sal) + mean(unscaled$sal), pred_sal$x, ylim = c(0, 1), type = "l", xlab = "Salinity (ppm)", ylab = "", bty = "l", cex.lab = 1.5, cex.axis = 1.5)
@@ -214,23 +214,6 @@ thi <- aggregate(thi, list(predict_pa$sal), FUN = mean)
 points(tlo$Group.1  * sd(unscaled$sal) + mean(unscaled$sal), tlo$V1, lty = 2, type = "l")
 points(thi$Group.1  * sd(unscaled$sal) + mean(unscaled$sal), thi$V1, lty = 2, type = "l")
 
-#par
-predict_pa_re <- expand.grid(seq(min(d$par), max(d$par), length.out = 100), unique(d$stn))
-predict_pa <- data.frame("z" = 0, "stn" = predict_pa_re$Var2, "temp" = 0, "sal" = 0, "par" = predict_pa_re$Var1, "day" = 0)
-pred_par <- predict(pa.lm, newdata = predict_pa, allow.new.level = T, type = "response")
-pred_par <- aggregate(pred_par, list(predict_pa$par), FUN = mean)
-plot(pred_par$Group.1 * sd(unscaled$par) + mean(unscaled$par), pred_par$x, ylim = c(0, 1), type = "l",xlab = expression("PAR" ~ (mu~E ~ m^{-2} ~ s^{-1})), ylab = "", bty = "l", cex.lab = 1.5, cex.axis = 1.5)
-legend("topleft", "(d)", bty = "n", cex = 1.5, x.intersp = 0, y.intersp = 0)
-mm <- model.matrix(~par, predict_pa)
-y <- mm%*%fixef(pa.lm)[c(1, 5)]
-pvar1 <- diag(mm %*% tcrossprod(vcov(pa.lm)[c(1, 5), c(1, 5)], mm))
-tlo = inv.logit(y - 1.96*sqrt(pvar1))
-thi = inv.logit(y + 1.96*sqrt(pvar1))
-tlo <- aggregate(tlo, list(predict_pa$par), FUN = mean)
-thi <- aggregate(thi, list(predict_pa$par), FUN = mean)
-points(tlo$Group.1  * sd(unscaled$par) + mean(unscaled$par), tlo$V1, lty = 2, type = "l")
-points(thi$Group.1  * sd(unscaled$par) + mean(unscaled$par), thi$V1, lty = 2, type = "l")
-
 
 mtext("Probability of krill presence", side = 2, outer = TRUE, line = 2, cex = 2)
 
@@ -242,16 +225,18 @@ dev.off()
 #Need to add random effect back in. Can't leave it out because data transformation in binomial glm will skew results
 #Using example from Simon Wotherspoon
 
+
 ilogit <- function(x) 1/(1+exp(-x))
 
 truth <- NULL
 pred  <- NULL
 for (i in unique(d$stn)) {
   
-  pa.lm <- glmer(pa ~ z + temp + sal + par - 1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
+  pa.lm <- glmer(pa ~ z + sal + temp + l.obs -1 + (1|stn), data = d[d$stn != i, ], family = "binomial")
   stn_sd <- unlist(lapply(VarCorr(pa.lm), function(m) sqrt(diag(m))))
-  fixed_effect <- rowSums(sweep(cbind(d$z[d$stn == i], d$temp[d$stn == i], d$sal[d$stn == i], d$par[d$stn == i]),MARGIN=2,fixef(pa.lm),`*`))
-
+  fixed_effect <- rowSums(sweep(d[d$stn == i, names(coef(pa.lm)$stn)[-1]], MARGIN=2, fixef(pa.lm),`*`))
+  
+  
   #resample to add in station random effect using extracted random effect sd
   pred_sample <- NULL
   for (j in 1:1000) {
@@ -266,8 +251,6 @@ for (i in unique(d$stn)) {
 #cross validation ROC
 crossValROC(pred, truth)
 
-pred <- round(pred)
-
 table(pred, truth)
 
 sensitivity(data = as.factor(pred), reference = as.factor(truth), positive = "1", negative = "0") #true positive rate
@@ -278,20 +261,10 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs))
-colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs")
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$temp, p, fluoro$stn, fluoro$obs, fluoro$ice))
+colnames(d) <- c("pa", "oxy", "sal", "z", "temp", "p", "stn", "obs", "ice")
 d <- na.omit(d)
 
-
-d$time <- NA
-d$day <- NA
-for (i in 1:nrow(d)) {
-  d$time[i] <- chron(times. = ctd_time$start.time[ctd_time$stn == d$stn[i]], format = "h:m:s")
-  d$day[i] <- ctd_time$julian_day[ctd_time$stn == d$stn[i]]
-}
-
-d$time <- chron(times. = d$time , format = "h:m:s")
-d$hour <- hours(d$time)
 
 dat <- d[d$pa == 1 & round(fitted(pa.lm)) == 1, ]
 dat <- dat[dat$stn %in% sort(unique(dat$stn))[which(table(dat$stn) >= 5)], ]
@@ -303,14 +276,70 @@ dat$l.obs[is.infinite(dat$l.obs)] <- NA
 dat_unscaled <- dat
 dat_unscaled$obs[dat_unscaled$obs < 0] <- NA
 
+d$l.obs <- log(d$obs)
+d$l.obs[is.nan(d$l.obs)] <- NA
+d$l.obs[is.infinite(d$l.obs)] <- NA
+d <- na.omit(d)
+
 dat$oxy <- scale(dat$oxy)
 dat$obs <- scale(dat$obs)
 dat$l.obs <- scale(dat$l.obs)
 
-p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 | stn, data = dat, na.action = na.omit,
-            control = list(opt='optim'))
+dat <- dat[dat$stn != 51, ]
+
+
+vf <- varComb(varIdent(form=~1|stn))
+
+p.lm <- lme(log(p) ~ l.obs*oxy, random =~ 1 | stn, data = dat, na.action = na.omit, control = list(opt = "optim"),
+            weights = vf)
+
 summary(p.lm)
-r.squared.lme(p.lm)
+r.squaredGLMM(p.lm)
+
+#plot of obs & oxy for paper
+plot(dat$obs, dat$oxy, pch = 19, xlab = "Phytoplankton fluorescence", ylab = "Dissolved oxygen", bty = "n")
+
+
+#difference mean and variance by group
+#see http://r.789695.n4.nabble.com/unequal-variance-assumption-for-lme-mixed-effect-model-td828664.html
+#read Pinheiro & Bates 2000
+boxplot(log(dat$p) ~ dat$stn)
+
+
+#plot residuals for paper
+par(mar = c(5, 5, 1, 1))
+plot(fitted(p.lm), residuals(p.lm, type = "pearson"), xlab = "Fitted values", ylab = "Pearson residuals", pch = 19, bty = "l", cex.lab = 2, cex.axis = 2)
+
+plot(log(na.omit(dat)$p), fitted(p.lm))
+abline(0, 1, col = "red")
+
+qqnorm(resid(p.lm, type = "pearson"))
+abline(0, 1, col = "red")
+
+p.gam <- gam(p ~ ti(oxy, l.obs) + s(temp) + s(z) + s(sal) + s(stn, bs = "re"), family = Gamma(link = "log"), data = dat, na.action = na.omit)
+
+plot(fitted(p.gam), residuals(p.gam, type = "pearson"))
+plot(log(na.omit(dat)$p), fitted(p.gam))
+abline(0, 1, col = "red")
+
+qqnorm(resid(p.gam))
+abline(0, 1, col = "red")
+
+p.asreml <- asreml(p ~ l.obs*oxy + z + temp + sal, random=~ id(stn), family = asreml.Gamma(link = "log"), data = dat, na.method.X = "na.omit")
+p.asreml <- update(p.asreml)
+
+
+
+
+
+coplot(log(p) ~ oxy|l.obs,data=dat,overlap = 0, pch = 19)
+coplot(p ~ oxy|l.obs,data=d,overlap = 0, pch = 19)
+
+d$krill <- d$p/10 #volumetric density gm-3
+d$krill_agg <- "None"
+d$krill_agg[d$krill > 0 & d$krill < 1.6] <- "Un-agg"
+d$krill_agg[d$krill >= 1.6] <- "Agg"
+d$krill_agg <- factor(d$krill_agg, c("None", "Un-agg", "Agg"))
 
 
 p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1|stn, data = dat, weights = varIdent(form=~1|stn), na.action = na.omit, control = list(opt='optim'))
@@ -321,6 +350,74 @@ plot(na.omit(dat)$oxy, residuals(p.lm, type = "pearson"))
 plot(na.omit(dat)$l.obs, residuals(p.lm, type = "pearson"))
 
 boxplot(residuals(p.lm, type = "pearson") ~ na.omit(dat)$stn)
+
+color <- rep("yellow", nrow(d))
+color[d$p == 0] <- "black"
+color[d$p > 1.6] <- "red"
+
+plot3d(d$p, d$oxy, d$l.obs, size = 5, col = color)
+
+pairs(~ oxy + sal + z + par + temp + l.obs + krill, data = d, col = color, pch = 19)
+
+#depth
+plot(d$krill, -d$z, col = color, pch = 19, ylab = "Depth (m)", xlab = "Krill density (gm-3)")
+legend("bottomright", c("No krill", "Un-aggregated", "Aggregated"), col = c("black", "yellow", "red"), pch = 19, bty = "n")
+boxplot(-d$z ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), ylab = "Depth (m)")
+
+#oxygen
+plot(d$oxy, d$krill, col = color, pch = 19, xlab = "Oxygen", ylab = "Krill density (gm-3)")
+legend("topleft", c("No krill", "Un-aggregated", "Aggregated"), col = c("black", "yellow", "red"), pch = 19, bty = "n")
+boxplot(d$oxy ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), ylab = "Oxygen")
+
+#phytoplankton
+plot(d$l.obs, d$krill, col = color, pch = 19, xlab = "Phytoplankton", ylab = "Krill density (gm-3)")
+legend("topleft", c("No krill", "Un-aggregated", "Aggregated"), col = c("black", "yellow", "red"), pch = 19, bty = "n")
+boxplot(d$l.obs ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), ylab = "Phytoplankton")
+
+#boxplots
+par(mfrow = c(1, 5))
+boxplot(d$sal ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Salinity")
+boxplot(d$oxy ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Oxygen")
+boxplot(d$l.obs ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Phytoplankton")
+boxplot(d$temp ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Temperature")
+boxplot(-d$z ~ d$krill_agg, col = c("darkgrey", "yellow", "red"), main = "Depth")
+
+table(d$krill_agg)
+
+#multinomial using nnet
+library(nnet)
+p.multi <- multinom(krill_agg ~ sal + oxy + l.obs + z, data = d)
+multi.fit <- predict(p.multi)
+
+table(multi.fit, d$krill_agg)
+
+
+#zero-truncated model
+#doesn't work because non-integer
+d$krill_ind <- round(d$krill/0.7)
+
+library(pscl)
+p.hurdle <- hurdle(krill_ind ~ sal + oxy + l.obs + temp | l.obs + z + temp, data = d, zero.dist = "binomial", link = "logit")
+summary(p.hurdle)
+
+
+p.zeroinf <- zeroinfl(krill_ind ~ sal + oxy + l.obs + z + temp, data = d)
+
+
+plot(p.hurdle$fitted.values, p.hurdle$residuals)
+plot(d$krill_ind, p.hurdle$fitted.values)
+
+table(round(predict(p.hurdle)), d$krill_ind)
+
+
+
+#truncated distribution
+library(gamlss.tr)
+# create a zero-truncated Normal distribution:
+gen.trun(0,"NO")
+
+r2 <- gamlss(p ~ sal + oxy + l.obs + z, sigma.formula =~ stn, family=NO, data=na.omit(dat))
+summary(r2)
 
 #deviance explained
 model_deviance <- -2*p.lm$logLik
@@ -339,16 +436,33 @@ pred_interaction <- predict(p.lm, newdata = interaction_data)
 pred_fixed <- aggregate(exp(pred_interaction), list(interaction_data$l.obs, interaction_data$oxy), FUN = mean)
 pred_fixed <- na.omit(pred_fixed)
 
-plot_dat <- data.frame("x" = exp(pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
+plot_dat <- data.frame("x" = (pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
 
 #interactive dot plot
-plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
+plot3d(plot_dat$x, plot_dat$y, plot_dat$z, xlab = "Log Phytoplankton Fluoresence", ylab = "Dissolved Oxygen", zlab = "Krill density (g/m2)")
 
 #static plot for paper
-
-wireframe(z ~ x * y, data = plot_dat, xlab = expression("Phytoplankton" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression("Krill density"~(gm^-2)),
+wireframe(z ~ x * y, data = plot_dat, xlab = expression("Ln(Phytoplankton)" ~ (mu~g ~ L^{-1})), ylab = expression("Dissolved oxygen" ~ (mu~mol ~ L^{-1})), zlab = expression(atop("Krill density",~(gm^-2))),
           perspective = FALSE, colorkey = FALSE, scales = list(arrows=FALSE,tick.number = 10, x = list(distance = 1.5), y = list(distance = 1.5), col = "black"),
           drape = T,  col.regions = colorRampPalette( c("lightblue", "darkblue"))(100), col = "transparent", par.settings = list(axis.line = list(col = 'transparent')))
+
+#surface plot with data for paper
+interaction_data <- expand.grid(seq(min(dat$oxy), max(dat$oxy), length.out = 50), seq(min(na.omit(dat$l.obs)), max(na.omit(dat$l.obs)), length.out = 50), unique(dat$stn))
+colnames(interaction_data) <- c("oxy", "l.obs", "stn")
+pred_interaction <- predict(p.lm, newdata = interaction_data)
+
+pred_fixed <- aggregate(exp(pred_interaction), list(interaction_data$l.obs, interaction_data$oxy), FUN = mean)
+pred_fixed <- na.omit(pred_fixed)
+
+plot_dat <- data.frame("x" = (pred_fixed$Group.1*sd(na.omit(dat_unscaled$l.obs)) + mean(na.omit(dat_unscaled$l.obs))), "y" = pred_fixed$Group.2*sd(dat_unscaled$oxy) + mean(dat_unscaled$oxy), "z" = pred_fixed$x)
+
+
+p <- persp(unique(plot_dat$x), unique(plot_dat$y), matrix(plot_dat$z, ncol = 50), xlab="Phytoplankton", ylab="Oxygen", zlab="Krill", 
+           theta=-40, shade = 0.2, col = "lightgrey")
+
+obs  <- trans3d(unscaled$l.obs, unscaled$oxy, unscaled$p, p)
+points(obs, col="red",pch=16)
+
 
 
 #interactive surface plot
@@ -421,9 +535,9 @@ pred <- NULL
 truth <- NULL
 for (i in unique(dat$stn[dat$stn != 47])) {
   
-  p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 + oxy + l.obs | stn, data = dat, na.action = na.omit, 
-              control = list(opt='optim'))
-  
+  p.lm <- lme(log(p) ~ l.obs*oxy + z, random =~ 1 | stn, data = dat[dat$stn != i, ], na.action = na.omit, 
+              control = list(opt='optim'), weights = vf)
+
   #resample using extracted random effect sds to simulate random effects
   #manually create predictions
   total <- NULL
@@ -433,15 +547,17 @@ for (i in unique(dat$stn[dat$stn != 47])) {
     intercept <- p.lm$coefficients$fixed[1] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[1, 2]))
     
     #oxy
-    oxygen <- (p.lm$coefficients$fixed[3] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[2, 2])))*dat$oxy[dat$stn == i]
+    oxygen <- p.lm$coefficients$fixed[3]*dat$oxy[dat$stn == i]
     
     #obs
-    l.obs <- (p.lm$coefficients$fixed[2] + rnorm(1, 0, sd = as.numeric(VarCorr(p.lm)[3, 2])))*dat$l.obs[dat$stn == i]
+    l.obs <- p.lm$coefficients$fixed[2]*dat$l.obs[dat$stn == i]
+    
+    depth <- p.lm$coefficients$fixed[4]*dat$z[dat$stn == i]
     
     #interaction
-    interaction <- p.lm$coefficients$fixed[4]*(dat$oxy*dat$l.obs)[dat$stn == i]
-    
-    combined <- exp(intercept + oxygen + l.obs + interaction)
+    interaction <- p.lm$coefficients$fixed[5]*(dat$oxy*dat$l.obs)[dat$stn == i]
+
+    combined <- exp(intercept + oxygen + l.obs + depth + interaction)
     
     combined[combined > 500] <- NA #catch unreasonably large values so they don't skew resample estimates
     
