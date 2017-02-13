@@ -351,6 +351,7 @@ plot(na.omit(dat)$l.obs, residuals(p.lm, type = "pearson"))
 
 boxplot(residuals(p.lm, type = "pearson") ~ na.omit(dat)$stn)
 
+
 color <- rep("yellow", nrow(d))
 color[d$p == 0] <- "black"
 color[d$p > 1.6] <- "red"
