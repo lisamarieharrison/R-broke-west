@@ -207,8 +207,9 @@ sb <- SpatialLinesDataFrame(sb, data = df)
 p1 <- ggplot(bubble_dat, guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
-  geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("dotted")) +
-  geom_path(data=fortify(sb), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("longdash")) +
+  geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
+  geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
+  scale_linetype_manual(name="Line Type", values=c(sACCf="dotted", SB ="longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
