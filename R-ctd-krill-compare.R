@@ -175,14 +175,40 @@ shape_ll <- gBuffer(shape_ll, byid=TRUE, width=0)
 
 shape_crop <- as(extent(rbind(range(bubble_dat$long), range(bubble_dat$lat))), "SpatialPolygons")
 proj4string(shape_crop) <- CRS(proj4string(shape_ll))
-shape_crop <- gBuffer(shape_crop, byid=TRUE, width=10)
+shape_crop <- gBuffer(shape_crop, byid=TRUE, width=8)
 
-out <- gIntersection(shape_ll, shape_crop, byid=TRUE)
+out_line <- as(shape_ll, 'SpatialLines')
+out_crop <- gIntersection(out_line, shape_crop, byid=TRUE)
+
+df <- data.frame(len = sapply(1:length(out_crop), function(i) gLength(out_crop[i, ])))
+rownames(df) <- sapply(1:length(out_crop), function(i) out_crop@lines[[i]]@ID)
+out <- SpatialLinesDataFrame(out_crop, data = df)
+
+#fronts
+#data from https://data.aad.gov.au/metadata/records/southern_ocean_fronts
+
+shape <- readOGR(path.expand("~/Lisa/phd/Mixed models/Data/front polygons"), "sthn_ocean_fronts")
+
+#sACCf front
+saccf <- shape[shape$NAME == "Southern Antarctic Circumpolar Current Front (sACCf)", ]
+saccf <- gIntersection(saccf, shape_crop, byid=TRUE)
+df <- data.frame(len = sapply(1:length(saccf), function(i) gLength(saccf[i, ])))
+rownames(df) <- sapply(1:length(saccf), function(i) saccf@lines[[i]]@ID)
+saccf <- SpatialLinesDataFrame(saccf, data = df)
+
+sb <- shape[shape$NAME == "Southern boundary of the Antarctic Circumpolar Current", ]
+sb <- gIntersection(sb, shape_crop, byid=TRUE)
+df <- data.frame(len = sapply(1:length(sb), function(i) gLength(sb[i, ])))
+rownames(df) <- sapply(1:length(sb), function(i) sb@lines[[i]]@ID)
+sb <- SpatialLinesDataFrame(sb, data = df)
+
 
 
 p1 <- ggplot(bubble_dat, guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
-  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
+  geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("dotted")) +
+  geom_path(data=fortify(sb), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
@@ -208,7 +234,9 @@ colnames(bubble_dat) <- c("long", "lat", "res")
 
 p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(res)), colour="red", fill = "red", shape = 21)+ scale_size_area(max_size = 8) +
-  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
+  geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("dotted")) +
+  geom_path(data=fortify(sb), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
@@ -380,31 +408,12 @@ plot(dat$obs, dat$oxy, pch = 19, xlab = "Phytoplankton fluorescence", ylab = "Di
 bubble_dat <- as.data.frame(cbind(dat$long[match(rownames(coefficients(p.lm)), dat$stn)], dat$lat[match(rownames(coefficients(p.lm)), dat$stn)], coefficients(p.lm)[, 1]))
 colnames(bubble_dat) <- c("long", "lat", "re")
 
-#polygon of coastline
-library(maptools)
-library(mapdata)
-library(rgdal)
-library(raster)
-library(rgeos)
-library(sp)
-
-#shape <- readOGR("~/phd/Lisa/southern ocean/BROKE-West/polygon", "moa_2004_coastline_v1.1") #laptop
-shape <- readOGR(path.expand("~/Lisa/phd/Mixed models/Data/polygon"), "moa_2004_coastline_v1.1") #desktop
-
-shape_ll <- spTransform(shape, CRS("+proj=longlat +datum=WGS84"))
-
-shape_ll <- gBuffer(shape_ll, byid=TRUE, width=0)
-
-shape_crop <- as(extent(rbind(range(bubble_dat$long), range(bubble_dat$lat))), "SpatialPolygons")
-proj4string(shape_crop) <- CRS(proj4string(shape_ll))
-shape_crop <- gBuffer(shape_crop, byid=TRUE, width=10)
-
-out <- gIntersection(shape_ll, shape_crop, byid=TRUE)
-
 
 p1 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
-  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
+  geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("dotted")) +
+  geom_path(data=fortify(sb), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
@@ -431,7 +440,9 @@ colnames(bubble_dat) <- c("long", "lat", "res")
 
 p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(res)), colour="red", fill = "red", shape = 21)+ scale_size_area(max_size = 8) +
-  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
+  geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("dotted")) +
+  geom_path(data=fortify(sb), aes(x=long, y=lat, group = group), color = "grey40", linetype = c("longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
