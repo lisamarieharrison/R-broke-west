@@ -155,7 +155,7 @@ auc(M.ROC[1,], M.ROC[2,])
 #------------ plot station random effect as bubble plot ----------------#
 
 
-bubble_dat <- as.data.frame(cbind(d$long[match(rownames(coefficients(pa.lm)$stn), d$stn)], d$lat[match(rownames(coefficients(pa.lm)$stn), d$stn)], coefficients(pa.lm)$stn[, 1]))
+bubble_dat <- as.data.frame(cbind(d$long[match(rownames(coefficients(pa.lm)$stn), d$stn)], d$lat[match(rownames(coefficients(pa.lm)$stn), d$stn)], exp(coefficients(pa.lm)$stn[, 1])))
 colnames(bubble_dat) <- c("long", "lat", "re")
 
 #polygon of coastline
@@ -197,6 +197,36 @@ p1 <- ggplot(bubble_dat, guide = FALSE) +
         axis.text = element_text(color = "black"),
         panel.background = element_blank())
 p1
+
+
+#------------ plot residuals as a bubble plot ----------------#
+
+res <- aggregate(residuals(pa.lm, type = "pearson"), by = list(d$stn), FUN = mean, na.rm = TRUE)
+bubble_dat <- as.data.frame(cbind(d$long[match(res$Group.1, d$stn)], d$lat[match(res$Group.1, d$stn)], res$x))
+colnames(bubble_dat) <- c("long", "lat", "res")
+
+
+p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
+  geom_point(aes(x=long, y=lat, size=abs(res)), colour="red", fill = "red", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
+  scale_x_continuous(name="Longitude") +
+  scale_y_continuous(name="Latitude") +
+  guides(color=guide_legend(override.aes=list(fill=NA))) +
+  theme(legend.title=element_blank(), text = element_text(size=20), 
+        legend.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line.x = element_line(colour = "black"),
+        axis.line.y = element_line(colour = "black"),
+        axis.text = element_text(color = "black"),
+        panel.background = element_blank())
+p1 + geom_point(data = bubble_dat[bubble_dat$res >= 0, ], aes(x=long, y=lat, size=abs(res)), colour="black", fill = "black", shape = 21)
+
+
+
+
 
 
 #partial plots
@@ -304,8 +334,8 @@ specificity(data = as.factor(pred), reference = as.factor(truth), positive = "1"
 
 #--------------- fluoro and oxy with linear relationship and interaction term ---------------#
 
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$temp, p, fluoro$stn, fluoro$obs, fluoro$ice))
-colnames(d) <- c("pa", "oxy", "sal", "z", "temp", "p", "stn", "obs", "ice")
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$temp, p, fluoro$stn, fluoro$obs, fluoro$ice, fluoro$long, fluoro$lat))
+colnames(d) <- c("pa", "oxy", "sal", "z", "temp", "p", "stn", "obs", "ice", "long", "lat")
 d <- na.omit(d)
 
 
@@ -341,6 +371,82 @@ r.squaredGLMM(p.lm)
 
 #plot of obs & oxy for paper
 plot(dat$obs, dat$oxy, pch = 19, xlab = "Phytoplankton fluorescence", ylab = "Dissolved oxygen", bty = "n")
+
+
+
+#------------ plot station random effect as bubble plot ----------------#
+
+
+bubble_dat <- as.data.frame(cbind(dat$long[match(rownames(coefficients(p.lm)), dat$stn)], dat$lat[match(rownames(coefficients(p.lm)), dat$stn)], coefficients(p.lm)[, 1]))
+colnames(bubble_dat) <- c("long", "lat", "re")
+
+#polygon of coastline
+library(maptools)
+library(mapdata)
+library(rgdal)
+library(raster)
+library(rgeos)
+library(sp)
+
+#shape <- readOGR("~/phd/Lisa/southern ocean/BROKE-West/polygon", "moa_2004_coastline_v1.1") #laptop
+shape <- readOGR(path.expand("~/Lisa/phd/Mixed models/Data/polygon"), "moa_2004_coastline_v1.1") #desktop
+
+shape_ll <- spTransform(shape, CRS("+proj=longlat +datum=WGS84"))
+
+shape_ll <- gBuffer(shape_ll, byid=TRUE, width=0)
+
+shape_crop <- as(extent(rbind(range(bubble_dat$long), range(bubble_dat$lat))), "SpatialPolygons")
+proj4string(shape_crop) <- CRS(proj4string(shape_ll))
+shape_crop <- gBuffer(shape_crop, byid=TRUE, width=10)
+
+out <- gIntersection(shape_ll, shape_crop, byid=TRUE)
+
+
+p1 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) + 
+  geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
+  scale_x_continuous(name="Longitude") +
+  scale_y_continuous(name="Latitude") +
+  guides(color=guide_legend(override.aes=list(fill=NA))) +
+  theme(legend.title=element_blank(), text = element_text(size=20), 
+        legend.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line.x = element_line(colour = "black"),
+        axis.line.y = element_line(colour = "black"),
+        axis.text = element_text(color = "black"),
+        panel.background = element_blank())
+p1 + geom_point(data = bubble_dat[bubble_dat$re >= 0, ], aes(x=long, y=lat, size=abs(re)), colour="black", fill = "black", shape = 21)
+
+
+
+#------------ plot residuals as a bubble plot ----------------#
+
+res <- aggregate(residuals(p.lm, type = "pearson"), by = list(na.omit(dat)$stn), FUN = mean, na.rm = TRUE)
+bubble_dat <- as.data.frame(cbind(dat$long[match(res$Group.1, dat$stn)], dat$lat[match(res$Group.1, dat$stn)], res$x))
+colnames(bubble_dat) <- c("long", "lat", "res")
+
+
+p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
+  geom_point(aes(x=long, y=lat, size=abs(res)), colour="red", fill = "red", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
+  scale_x_continuous(name="Longitude") +
+  scale_y_continuous(name="Latitude") +
+  guides(color=guide_legend(override.aes=list(fill=NA))) +
+  theme(legend.title=element_blank(), text = element_text(size=20), 
+        legend.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line.x = element_line(colour = "black"),
+        axis.line.y = element_line(colour = "black"),
+        axis.text = element_text(color = "black"),
+        panel.background = element_blank())
+p1 + geom_point(data = bubble_dat[bubble_dat$res >= 0, ], aes(x=long, y=lat, size=abs(res)), colour="black", fill = "black", shape = 21)
+
 
 
 #difference mean and variance by group
