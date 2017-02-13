@@ -97,8 +97,8 @@ for(i in 1:nrow(stn_coords))
 
 stn_coords$depth <- depths$Depth[locV]
 
-d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs, fluoro$ice))
-colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs", "ice")
+d <- data.frame(cbind(pa, fluoro$oxy, fluoro$sal, fluoro$z, fluoro$par, fluoro$temp, p, fluoro$stn, fluoro$obs, fluoro$ice, fluoro$long, fluoro$lat))
+colnames(d) <- c("pa", "oxy", "sal", "z", "par", "temp", "p", "stn", "obs", "ice", "long", "lat")
 d <- na.omit(d)
 
 # d$time <- NA
@@ -130,7 +130,7 @@ vif(pa.lm)
 
 #scale or model doesn't converge
 
-d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9:11)], 2, scale))
+d <- cbind(d[, c(1, 7:8, 11, 12)], apply(d[, c(2:6, 9, 10, 13)], 2, scale))
 
 #mixed model with station random effect
 pa.lm <- glmer(pa ~ z + temp + sal - 1 +(1|stn), data = d, family = "binomial")
@@ -152,8 +152,51 @@ lines(c(0, 1), c(0, 1), col = "red")
 auc(M.ROC[1,], M.ROC[2,])
 
 
-#plot station random effect as bubble plot
+#------------ plot station random effect as bubble plot ----------------#
 
+
+bubble_dat <- as.data.frame(cbind(d$long[match(rownames(coefficients(pa.lm)$stn), d$stn)], d$lat[match(rownames(coefficients(pa.lm)$stn), d$stn)], coefficients(pa.lm)$stn[, 1]))
+colnames(bubble_dat) <- c("long", "lat", "re")
+
+#polygon of coastline
+library(maptools)
+library(mapdata)
+library(rgdal)
+library(raster)
+library(rgeos)
+library(sp)
+
+#shape <- readOGR("~/phd/Lisa/southern ocean/BROKE-West/polygon", "moa_2004_coastline_v1.1") #laptop
+shape <- readOGR(path.expand("~/Lisa/phd/Mixed models/Data/polygon"), "moa_2004_coastline_v1.1") #desktop
+
+shape_ll <- spTransform(shape, CRS("+proj=longlat +datum=WGS84"))
+
+shape_ll <- gBuffer(shape_ll, byid=TRUE, width=0)
+
+shape_crop <- as(extent(rbind(range(bubble_dat$long), range(bubble_dat$lat))), "SpatialPolygons")
+proj4string(shape_crop) <- CRS(proj4string(shape_ll))
+shape_crop <- gBuffer(shape_crop, byid=TRUE, width=10)
+
+out <- gIntersection(shape_ll, shape_crop, byid=TRUE)
+
+
+p1 <- ggplot(bubble_dat, guide = FALSE) + 
+  geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_polygon(data=fortify(out[1, 1]), aes(x=long, y=lat), color = "black", fill = NA) +
+  coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
+  scale_x_continuous(name="Longitude") +
+  scale_y_continuous(name="Latitude") +
+  guides(color=guide_legend(override.aes=list(fill=NA))) +
+  theme(legend.title=element_blank(), text = element_text(size=20), 
+        legend.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line.x = element_line(colour = "black"),
+        axis.line.y = element_line(colour = "black"),
+        axis.text = element_text(color = "black"),
+        panel.background = element_blank())
+p1
 
 
 #partial plots
