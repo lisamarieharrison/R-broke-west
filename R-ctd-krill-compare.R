@@ -133,7 +133,7 @@ vif(pa.lm)
 d <- cbind(d[, c(1, 7:8)], apply(d[, c(2:6, 9, 10, 14)], 2, scale))
 
 #mixed model with station random effect
-pa.lm <- glmer(pa ~ z + temp + sal + par +(1|stn), data = d, family = "binomial")
+pa.lm <- glmer(pa ~ z + temp + sal +(1|stn), data = d, family = "binomial")
 summary(pa.lm)
 
 #calculate sensitivity and specificity
@@ -150,6 +150,11 @@ lines(c(0, 1), c(0, 1), col = "red")
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
+
+
+#plot station random effect as bubble plot
+
+
 
 #partial plots
 pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_1.pdf", width = 10, height = 9)
@@ -307,6 +312,15 @@ p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1 | stn, data = dat, na.action = na.
 summary(p.lm)
 r.squared.lme(p.lm)
 
+
+p.lm <- lme(log(p) ~ l.obs * oxy, random =~ 1|stn, data = dat, weights = varIdent(form=~1|stn), na.action = na.omit, control = list(opt='optim'))
+
+
+plot(fitted(p.lm), residuals(p.lm, type = "pearson"))
+plot(na.omit(dat)$oxy, residuals(p.lm, type = "pearson"))
+plot(na.omit(dat)$l.obs, residuals(p.lm, type = "pearson"))
+
+boxplot(residuals(p.lm, type = "pearson") ~ na.omit(dat)$stn)
 
 #deviance explained
 model_deviance <- -2*p.lm$logLik
