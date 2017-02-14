@@ -9,7 +9,12 @@ library(ggplot2)
 library(gridGraphics)
 require(gridExtra)
 
-wd <- 'C:/Users/43439535/Dropbox/uni/hurdle paper/figures/'
+
+if (Sys.info()[4] == "SCI-6246") {
+  wd <- 'C:/Users/43439535/Dropbox/uni/hurdle paper/figures/'
+} else {
+  wd <- 'C:/Users/Lisa/Dropbox/uni/hurdle paper/figures/'
+}
 
 img1 <- readPNG(paste0(wd, "krill_new.png"))
 transparent <- img1[,,4] == 0
