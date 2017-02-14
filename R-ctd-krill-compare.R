@@ -23,6 +23,7 @@ library(chron)
 library(MuMIn)
 library(geosphere) #distHaversine
 library(boot) #inv.logit
+library(gridExtra) #grid.arrange
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -203,7 +204,6 @@ rownames(df) <- sapply(1:length(sb), function(i) sb@lines[[i]]@ID)
 sb <- SpatialLinesDataFrame(sb, data = df)
 
 
-
 p1 <- ggplot(bubble_dat, guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
@@ -214,7 +214,8 @@ p1 <- ggplot(bubble_dat, guide = FALSE) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
-  theme(legend.title=element_blank(), text = element_text(size=20), 
+  geom_text(size = 7, x = 25, y = -61.3, label = "(a)") +
+  theme(legend.title=element_blank(), text = element_text(size = 20), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -233,8 +234,9 @@ bubble_dat <- as.data.frame(cbind(d$long[match(res$Group.1, d$stn)], d$lat[match
 colnames(bubble_dat) <- c("long", "lat", "res")
 
 
-p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
-  geom_point(aes(x=long, y=lat, size=abs(res)), colour="red", fill = "red", shape = 21)+ scale_size_area(max_size = 8) +
+p2 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
+  geom_point(aes(x=long, y=lat, size=abs(res)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_point(data = bubble_dat[bubble_dat$res >= 0, ], aes(x=long, y=lat, size=abs(res)), colour="black", fill = "black", shape = 21) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
@@ -243,6 +245,7 @@ p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
+  geom_text(size = 7, x = 25, y = -61.3, label = "(b)") +
   theme(legend.title=element_blank(), text = element_text(size=20), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -252,7 +255,7 @@ p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) +
         axis.line.y = element_line(colour = "black"),
         axis.text = element_text(color = "black"),
         panel.background = element_blank())
-p1 + geom_point(data = bubble_dat[bubble_dat$res >= 0, ], aes(x=long, y=lat, size=abs(res)), colour="black", fill = "black", shape = 21)
+p2
 
 
 
@@ -411,8 +414,9 @@ bubble_dat <- as.data.frame(cbind(dat$long[match(rownames(coefficients(p.lm)), d
 colnames(bubble_dat) <- c("long", "lat", "re")
 
 
-p1 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) + 
+p3 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) + 
   geom_point(aes(x=long, y=lat, size=abs(re)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_point(data = bubble_dat[bubble_dat$re >= 0, ], aes(x=long, y=lat, size=abs(re)), colour="black", fill = "black", shape = 21) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
@@ -421,6 +425,7 @@ p1 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
+  geom_text(size = 7, x = 25, y = -61.3, label = "(c)") +
   theme(legend.title=element_blank(), text = element_text(size=20), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -430,7 +435,7 @@ p1 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) +
         axis.line.y = element_line(colour = "black"),
         axis.text = element_text(color = "black"),
         panel.background = element_blank())
-p1 + geom_point(data = bubble_dat[bubble_dat$re >= 0, ], aes(x=long, y=lat, size=abs(re)), colour="black", fill = "black", shape = 21)
+p3
 
 
 
@@ -441,8 +446,9 @@ bubble_dat <- as.data.frame(cbind(dat$long[match(res$Group.1, dat$stn)], dat$lat
 colnames(bubble_dat) <- c("long", "lat", "res")
 
 
-p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
-  geom_point(aes(x=long, y=lat, size=abs(res)), colour="red", fill = "red", shape = 21)+ scale_size_area(max_size = 8) +
+p4 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) + 
+  geom_point(aes(x=long, y=lat, size=abs(res)), colour="black", fill = "grey", shape = 21)+ scale_size_area(max_size = 8) +
+  geom_point(data = bubble_dat[bubble_dat$res >= 0, ], aes(x=long, y=lat, size=abs(res)), colour="black", fill = "black", shape = 21) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
@@ -451,6 +457,7 @@ p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) +
   scale_x_continuous(name="Longitude") +
   scale_y_continuous(name="Latitude") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
+  geom_text(size = 7, x = 25, y = -61.3, label = "(d)") +
   theme(legend.title=element_blank(), text = element_text(size=20), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -460,9 +467,16 @@ p1 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) +
         axis.line.y = element_line(colour = "black"),
         axis.text = element_text(color = "black"),
         panel.background = element_blank())
-p1 + geom_point(data = bubble_dat[bubble_dat$res >= 0, ], aes(x=long, y=lat, size=abs(res)), colour="black", fill = "black", shape = 21)
+p4
 
 
+#----------------- bubble plots of residuals and random effects for paper --------------------#
+
+pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_3.pdf", width = 20, height = 10)
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+dev.off()
 
 #difference mean and variance by group
 #see http://r.789695.n4.nabble.com/unequal-variance-assumption-for-lme-mixed-effect-model-td828664.html
