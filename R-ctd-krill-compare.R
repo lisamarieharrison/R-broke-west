@@ -24,6 +24,7 @@ library(MuMIn)
 library(geosphere) #distHaversine
 library(boot) #inv.logit
 library(gridExtra) #grid.arrange
+library(grid) #textGrob
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -209,10 +210,10 @@ p1 <- ggplot(bubble_dat, guide = FALSE) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
-  scale_linetype_manual(name="Line Type", values=c(sACCf="dotted", SB ="longdash")) +
+  scale_linetype_manual(name="Line Type", values=c(sACCf="dotdash", SB ="longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
-  scale_x_continuous(name="Longitude") +
-  scale_y_continuous(name="Latitude") +
+  scale_x_continuous(name="") +
+  scale_y_continuous(name="") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
   geom_text(size = 7, x = 25, y = -61.3, label = "(a)") +
   theme(legend.title=element_blank(), text = element_text(size = 20), 
@@ -240,10 +241,10 @@ p2 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
-  scale_linetype_manual(name="Line Type", values=c(sACCf="dotted", SB ="longdash")) +
+  scale_linetype_manual(name="Line Type", values=c(sACCf="dotdash", SB ="longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
-  scale_x_continuous(name="Longitude") +
-  scale_y_continuous(name="Latitude") +
+  scale_x_continuous(name="") +
+  scale_y_continuous(name="") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
   geom_text(size = 7, x = 25, y = -61.3, label = "(b)") +
   theme(legend.title=element_blank(), text = element_text(size=20), 
@@ -420,10 +421,10 @@ p3 <- ggplot(bubble_dat[bubble_dat$re < 0, ], guide = FALSE) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
-  scale_linetype_manual(name="Line Type", values=c(sACCf="dotted", SB ="longdash")) +
+  scale_linetype_manual(name="Line Type", values=c(sACCf="dotdash", SB ="longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
-  scale_x_continuous(name="Longitude") +
-  scale_y_continuous(name="Latitude") +
+  scale_x_continuous(name="") +
+  scale_y_continuous(name="") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
   geom_text(size = 7, x = 25, y = -61.3, label = "(c)") +
   theme(legend.title=element_blank(), text = element_text(size=20), 
@@ -452,10 +453,10 @@ p4 <- ggplot(bubble_dat[bubble_dat$res < 0, ], guide = FALSE) +
   geom_path(data=fortify(out, group = id), aes(x=long, y=lat), color = "black") +
   geom_path(data=fortify(saccf), aes(x=long, y=lat, group = group, linetype = "sACCf"), color = "grey40") +
   geom_path(data=fortify(sb), aes(x=long, y=lat, group = group, linetype = "SB"), color = "grey40") +
-  scale_linetype_manual(name="Line Type", values=c(sACCf="dotted", SB ="longdash")) +
+  scale_linetype_manual(name="Line Type", values=c(sACCf="dotdash", SB ="longdash")) +
   coord_map(xlim = range(bubble_dat$long) + c(-10, 10), ylim = range(bubble_dat$lat) + c(-2, 1)) +
-  scale_x_continuous(name="Longitude") +
-  scale_y_continuous(name="Latitude") +
+  scale_x_continuous(name="") +
+  scale_y_continuous(name="") +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
   geom_text(size = 7, x = 25, y = -61.3, label = "(d)") +
   theme(legend.title=element_blank(), text = element_text(size=20), 
@@ -472,9 +473,9 @@ p4
 
 #----------------- bubble plots of residuals and random effects for paper --------------------#
 
-pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_3.pdf", width = 20, height = 10)
+pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_3.pdf", width = 10, height = 15)
 
-grid.arrange(p1, p2, p3, p4, ncol = 2)
+grid.arrange(p1, p2, p3, p4, ncol = 1, bottom = textGrob("Longitude", gp = gpar(fontsize=20)), left = textGrob("Latitude", rot=90, gp = gpar(fontsize=20)))
 
 dev.off()
 
