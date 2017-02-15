@@ -28,9 +28,9 @@ g1   <- rasterGrob(img1, interpolate=FALSE)
 
 
 #Example environment
-waterT <- seq(1, 0.9, length.out=30) 
-waterT <- append(waterT, seq(waterT[length(waterT)], 0.6, length.out=20)) 
-waterT <- append(waterT, seq(waterT[length(waterT)], 0.5, length.out=190)) 
+waterT <- seq(1, 0.7, length.out=30) 
+waterT <- append(waterT, seq(waterT[length(waterT)], 0.3, length.out=20)) 
+waterT <- append(waterT, seq(waterT[length(waterT)], 0.1, length.out=190)) 
 dat <- data.frame(obs=1:length(waterT), waterT=waterT)
 
 p1 <- qplot(obs, waterT, data=dat, geom='line') +
@@ -45,14 +45,16 @@ p1 <- qplot(obs, waterT, data=dat, geom='line') +
         axis.text = element_text(color = "black"),
         panel.background = element_blank())
 
-p1b <- p1 +  labs(x='Observation number', y="")
+p1a <- p1 + geom_text(size = 5, x = 235, y = 0.9, label = "(a)") 
+
+p1b <- p1 +  labs(x='Observation number', y="") + geom_text(size = 5, x = 235, y = 0.9, label = "(b)") 
 
 #environmental pref
 dat$drift <- 1/nrow(dat)
 #assume depth pref is Gaussian 
-dpMean <- 0.75
+dpMean <- 0.5
 dpSD <- 0.05 
-dat$pref <- dnorm(dat$waterT, 0.75, 0.05)/sum(dnorm(dat$waterT, dpMean, dpSD))
+dat$pref <- dnorm(dat$waterT, 0.5, 0.05)/sum(dnorm(dat$waterT, dpMean, dpSD))
 maxy <- max(c(dat$drift,dat$pref))
 
 p2 <- qplot(waterT, drift, data=dat, geom='line')+
@@ -60,6 +62,7 @@ p2 <- qplot(waterT, drift, data=dat, geom='line')+
        title='Drifting - No preference') +
   scale_y_continuous(limits=c(0, maxy)) +
   theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(size = 5, x = 1, y = 0.15, label = "(c)") +
   theme(legend.title=element_blank(), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -72,7 +75,8 @@ p2 <- qplot(waterT, drift, data=dat, geom='line')+
 
 p3 <- qplot(waterT, pref, data=dat, geom='line') +
   labs(x = expression(paste("Water temperature (",degree,"C)")), y = '',
-       title=expression(paste("Swimming - Preference of ~0.7",degree,"C"))) +
+       title=expression(paste("Swimming - Preference of ~0.5",degree,"C"))) +
+  geom_text(size = 5, x = 1, y = 0.15, label = "(d)") +
   scale_y_continuous(limits=c(0, maxy)) + 
   theme(plot.title = element_text(hjust = 0.5)) +
   theme(legend.title=element_blank(), 
@@ -100,6 +104,7 @@ p4 <- qplot(obs, waterT, data=dat, geom='line')+
   labs(x='Observation number', y=expression(paste("Water temperature (",degree,"C)")),
        title='Drifting') +
   theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(size = 5, x = 235, y = 0.9, label = "(e)") +
   theme(legend.title=element_blank(), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -124,6 +129,7 @@ p5 <- qplot(obs, waterT, data=dat, geom='line')+
   labs(x='Observation number', y="",
        title='Swimming') +
   theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(size = 5, x = 235, y = 0.9, label = "(f)") +
   theme(legend.title=element_blank(), 
         legend.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -138,14 +144,14 @@ for (i in 1:nswarms) {
   p5 <- p5 + annotation_custom(g1, xmin=xxg[i]-xoffset, xmax=xxg[i]+xoffset, ymin=yyg[i]-yoffset, ymax=yyg[i]+yoffset)
 }
 
-pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_4.pdf", width = 9, height = 12)
+#pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_4.pdf", width = 9, height = 12)
 
 #plot
 plus <- textGrob("+", gp=gpar(fontface="bold", fontsize = 40))
 equals <- textGrob("=", gp=gpar(fontface="bold", fontsize = 40))
-#windows(width=9, height=12)
-grid.arrange(arrangeGrob(p1, p1b, ncol = 2, top = textGrob("Example Environment - Water Temperature", gp=gpar(fontface="bold"))), 
+windows(width=9, height=12)
+grid.arrange(arrangeGrob(p1a, p1b, ncol = 2, top = textGrob("Example Environment - Water Temperature", gp=gpar(fontface="bold"))), 
              plus, arrangeGrob(p2, p3, ncol = 2, top = textGrob("Example Preference", gp=gpar(fontface="bold"))), equals,
              arrangeGrob(p4, p5, ncol = 2, top = textGrob("Observed Distribution", gp=gpar(fontface="bold"))), nrow=5, ncol=1, heights=c(3, 1, 3, 1, 3))
 
-dev.off()
+#dev.off()
