@@ -25,6 +25,7 @@ library(geosphere) #distHaversine
 library(boot) #inv.logit
 library(gridExtra) #grid.arrange
 library(grid) #textGrob
+library(DHARMa) # glmer quantile residuals
 
 #source required functions
 function_list <- c("setUpFluoro.R",
@@ -152,6 +153,22 @@ lines(c(0, 1), c(0, 1), col = "red")
 
 #calculate the area under the ROC curve (0.5 = bad, 0.8 = good, 0.9 = excellent, 1 = perfect)
 auc(M.ROC[1,], M.ROC[2,])
+
+par(mfrow = c(2, 2))
+plot(fitted(pa.lm), residuals(pa.lm, type = "pearson"), bty = "l", xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+plot(d$temp, residuals(pa.lm, type = "pearson"), bty = "l", xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+plot(d$z, residuals(pa.lm, type = "pearson"), bty = "l", xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+plot(d$sal, residuals(pa.lm, type = "pearson"), bty = "l", xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+
+# plot quantile residuals for glmer object
+sim_resid <- simulateResiduals(pa.lm)
+
+par(cex.axis=1.5, cex.lab=1.5, lwd=2, pch=19)
+plotSimulatedResiduals(sim_resid)
 
 
 #------------ plot station random effect as bubble plot ----------------#
