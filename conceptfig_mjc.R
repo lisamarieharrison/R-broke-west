@@ -144,14 +144,15 @@ for (i in 1:nswarms) {
   p5 <- p5 + annotation_custom(g1, xmin=xxg[i]-xoffset, xmax=xxg[i]+xoffset, ymin=yyg[i]-yoffset, ymax=yyg[i]+yoffset)
 }
 
-#pdf("C:/Users/43439535/Dropbox/uni/hurdle paper/figures/fig_4.pdf", width = 9, height = 12)
+#pdf(paste0(wd, "fig_4.pdf"), width = 9, height = 12)
+png(paste0(wd, "fig_4.png"), width = 9, height = 12, units = "in", res = 100)
 
 #plot
 plus <- textGrob("+", gp=gpar(fontface="bold", fontsize = 40))
 equals <- textGrob("=", gp=gpar(fontface="bold", fontsize = 40))
-windows(width=9, height=12)
+#windows(width=9, height=12)
 grid.arrange(arrangeGrob(p1a, p1b, ncol = 2, top = textGrob("Example Environment - Water Temperature", gp=gpar(fontface="bold"))), 
              plus, arrangeGrob(p2, p3, ncol = 2, top = textGrob("Example Preference", gp=gpar(fontface="bold"))), equals,
              arrangeGrob(p4, p5, ncol = 2, top = textGrob("Observed Distribution", gp=gpar(fontface="bold"))), nrow=5, ncol=1, heights=c(3, 1, 3, 1, 3))
 
-#dev.off()
+dev.off()
